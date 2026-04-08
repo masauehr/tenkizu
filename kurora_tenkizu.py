@@ -22,10 +22,62 @@ import cartopy.crs as ccrs
 import datetime
 import sys
 import argparse
+from pathlib import Path
+import requests
 
 import metpy.calc as mpcalc
 from metpy.units import units
 from scipy.ndimage import maximum_filter, minimum_filter  # 新形式に修正済み
+
+# RISHサーバーのベースURL
+BASE_URL = "http://database.rish.kyoto-u.ac.jp/arch/jmadata/data/gpv/original"
+HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; GSM-Downloader/1.0)"}
+
+
+def ensure_file(gr_path: str, gr_fn: str, year: int, month: int, day: int) -> bool:
+    """
+    データファイルが存在しない場合、RISHサーバーから自動ダウンロードする。
+
+    Returns:
+        成功時 True、失敗時 False
+    """
+    if os.path.exists(gr_path):
+        return True
+
+    print(f"データファイルが見つかりません: {gr_fn}")
+    print(f"RISHサーバーからダウンロードを試みます...")
+
+    url = f"{BASE_URL}/{year}/{month:02d}/{day:02d}/{gr_fn}"
+    dest = Path(gr_path)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        with requests.get(url, headers=HEADERS, stream=True, timeout=120) as r:
+            r.raise_for_status()
+            total = int(r.headers.get("content-length", 0))
+            downloaded = 0
+            with open(dest, "wb") as f:
+                for chunk in r.iter_content(chunk_size=65536):
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if total > 0:
+                        pct = downloaded / total * 100
+                        print(f"\r  {pct:.1f}% ({downloaded/(1024*1024):.1f}/{total/(1024*1024):.1f} MB)",
+                              end="", flush=True)
+            print()
+        size_mb = dest.stat().st_size / (1024 * 1024)
+        print(f"ダウンロード完了: {gr_fn} ({size_mb:.1f} MB)")
+        return True
+    except requests.HTTPError as e:
+        print(f"\nダウンロード失敗（HTTP {e.response.status_code}）: {url}")
+        if dest.exists():
+            dest.unlink()
+        return False
+    except requests.RequestException as e:
+        print(f"\nダウンロード失敗: {e}")
+        if dest.exists():
+            dest.unlink()
+        return False
 
 
 def parse_args():
@@ -90,10 +142,9 @@ def main():
     gr_fn = gsm_fn_t.format(i_year, i_month, i_day, i_hourZ, i_ft)
     gr_path = data_fld + gr_fn
 
-    # ファイル存在確認
-    if not os.path.exists(gr_path):
-        print(f"エラー: データファイルが見つかりません: {gr_path}")
-        print(f"  download_gsm.py で事前にダウンロードしてください。")
+    # ファイルが存在しない場合は自動ダウンロード
+    if not ensure_file(gr_path, gr_fn, i_year, i_month, i_day):
+        print(f"エラー: データの取得に失敗しました。")
         sys.exit(1)
 
     print(f"データ読み込み: {gr_fn}")
