@@ -277,8 +277,9 @@ def plot_one(i_year: int, i_month: int, i_day: int, i_hourZ: int,
     os.makedirs(output_dir, exist_ok=True)
     out_fn = f"{output_dir}/{dt_str2}_FT{ft_hours:03d}h_{tagHp}hPa_Height_VORT.png"
     plt.savefig(out_fn, dpi=150, bbox_inches='tight')
-    plt.close()
     print(f"[{ft_hours:4d}h] 出力: {out_fn}")
+    plt.show()
+    plt.close()
     return True
 
 
