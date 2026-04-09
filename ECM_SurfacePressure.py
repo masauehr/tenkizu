@@ -142,8 +142,8 @@ def parse_args():
         """
     )
     parser.add_argument('init_time', type=str,            help='初期時刻 YYYYMMDDHH（UTC）')
-    parser.add_argument('start_ft',  type=int,            help='開始予報時間（時間数）')
-    parser.add_argument('n_steps',   type=int,            help='作成する枚数（6h間隔）')
+    parser.add_argument('start_ft',  type=int, nargs='?', default=0,            help='開始予報時間（時間数）')
+    parser.add_argument('n_steps',   type=int, nargs='?', default=1,            help='作成する枚数（6h間隔）')
     parser.add_argument('--tcwv',    action='store_true', help='可降水量（TCWV）シェードを表示する')
     parser.add_argument('--tp',      action='store_true', help='積算降水量シェードを表示する（FT>0のみ有効）')
     return parser.parse_args()

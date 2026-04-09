@@ -137,8 +137,8 @@ def parse_args():
         """
     )
     parser.add_argument('init_time',  type=str, help='初期時刻 YYYYMMDDHH（UTC）')
-    parser.add_argument('start_ft',   type=int, help='開始予報時間（時間数）')
-    parser.add_argument('n_steps',    type=int, help='作成する枚数（6h間隔）')
+    parser.add_argument('start_ft',   type=int, nargs='?', default=0, help='開始予報時間（時間数）')
+    parser.add_argument('n_steps',    type=int, nargs='?', default=1, help='作成する枚数（6h間隔）')
     parser.add_argument('--level-div', type=int, default=700, help='発散気圧面 hPa（デフォルト: 700）')
     parser.add_argument('--level-t',   type=int, default=850, help='気温・風気圧面 hPa（デフォルト: 850）')
     return parser.parse_args()

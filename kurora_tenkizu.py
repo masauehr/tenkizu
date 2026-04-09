@@ -124,9 +124,9 @@ def parse_args():
     )
     parser.add_argument('init_time', type=str,
                         help='初期時刻 YYYYMMDDHH（UTC）例: 2017121012')
-    parser.add_argument('start_ft', type=str,
+    parser.add_argument('start_ft', type=str, nargs='?', default='0000',
                         help='最初の予報時間 DDHH形式 例: 0000, 0018, 0100')
-    parser.add_argument('n_steps', type=int,
+    parser.add_argument('n_steps', type=int, nargs='?', default=1,
                         help='作成する天気図の枚数（6h間隔）')
     parser.add_argument('level', type=int, nargs='?', default=500,
                         help='気圧面 hPa（デフォルト: 500）')

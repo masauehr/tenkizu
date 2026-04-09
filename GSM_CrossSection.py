@@ -97,8 +97,8 @@ def parse_args():
         """
     )
     parser.add_argument('init_time',   type=str, help='初期時刻 YYYYMMDDHH（UTC）')
-    parser.add_argument('start_ft',    type=str, help='開始予報時間 DDHH形式')
-    parser.add_argument('n_steps',     type=int, help='作成する枚数（6h間隔）')
+    parser.add_argument('start_ft',    type=str, nargs='?', default='0000', help='開始予報時間 DDHH形式')
+    parser.add_argument('n_steps',     type=int, nargs='?', default=1, help='作成する枚数（6h間隔）')
     parser.add_argument('--lat-s',     type=float, default=45.0, dest='lat_start', help='断面始点緯度（デフォルト: 45.0）')
     parser.add_argument('--lat-e',     type=float, default=25.0, dest='lat_end',   help='断面終点緯度（デフォルト: 25.0）')
     parser.add_argument('--lon-s',     type=float, default=130.0, dest='lon_start', help='断面始点経度（デフォルト: 130.0）')
