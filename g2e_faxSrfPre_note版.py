@@ -1,0 +1,495 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[12]:
+
+
+# ECMWF Grib2　地上気圧などの天気図作成
+#
+#　表示：地上気圧(2hPa毎)、10m風、2m気温、積算降水量(FT0-)、可降水量
+#
+#  2025/7/23 Ryuta Kurora
+#
+import math
+import pygrib
+import xarray as xr
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
+import numpy as np
+import matplotlib.path as mpath
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+import datetime
+import sys
+#
+import metpy.calc as mpcalc
+from metpy.units import units
+from scipy.ndimage import maximum_filter, minimum_filter
+#
+import argparse
+
+
+# In[20]:
+
+
+# 表示要素の指定
+disp_tcwv = True   # 可降水量
+disp_tp = False   # 総降水量
+#
+# 読み込む初期値の年月日時をUTCで与えます。
+i_year =2023
+i_month = 5
+i_day = 23
+i_hourZ = 12
+#
+# 予想時間(0から84)  ただし0の場合は降水量のデータはない
+ft_hours = 0
+#
+# 描画する範囲の大まかな指定
+## 描画指定
+# 基準の経度  JAPAN:140 USA:270
+set_central_longitude=140
+flag_border=False
+# 地図の描画範囲指定
+n_area=0
+if n_area == 0:
+    i_area = [108, 156, 17, 55]  #FEAX 極東                                                                   
+    str_area = ""
+elif n_area == 1:
+    i_area = [115, 151, 20, 50]  #fx85 日本付近                                                               
+    str_area = "_j"
+elif n_area == 2:
+    i_area = [105,180,0,65]      #ASAS                                                                        
+    str_area = "_a"
+elif n_area == 100:              # 日本付近
+    i_area = [120, 150, 20, 50]                                                                
+    str_area = "_j0"
+elif n_area == 130:
+    i_area = [133,144,31,41]     # 東日本付近
+    str_area = "_EastJapan"
+elif n_area == 9:
+    set_central_longitude=270
+    i_area = [238, 286, 17, 55]  # USA
+    str_area = "_usa"
+    lonW=210
+    lonE=330
+    flag_border=True
+else:
+    i_area = [108, 156, 17, 55]  #FEAX 極東                                                                   
+    str_area = ""
+#
+# 緯線・経線の指定
+dlon,dlat=10,10   # 10度ごとに
+#
+# 等圧線(等値線の間隔を指定)
+levels_tmp0  =np.arange(-60,60,3) # 等値線
+levels_pre0  =np.arange(860,1100,  4) # 等値線  
+levels_pre0B =np.arange(860,1100, 20) # 等値線 太線 数字           
+#
+## データの格納先フォルダー名
+data_fld="./data/ecm/"
+
+
+# In[21]:
+
+
+## 緯度経度で指定したポイントの図上の座標などを取得する関数 transform_lonlat_to_figure() 
+# 図法の座標 => pixel座標 => 図の座標　と3回の変換を行う
+#  　pixel座標: plt.figureで指定した大きさxDPIに合わせ、左下を原点とするpixelで測った座標   
+#  　図の座標: axesで指定した範囲を(0,1)x(0,1)とする座標
+# 3つの座標を出力する
+#    図の座標, Pixel座標, 図法の座標
+def transform_lonlat_to_figure(lonlat, ax, proj):
+    # lonlat:経度と緯度  (lon, lat) 
+    # ax: Axes図の座標系    ex. fig.add_subplot()の戻り値
+    # proj: axで指定した図法 
+    #
+    # 例 緯度経度をpointで与え、ステレオ図法る場合
+    #    point = (140.0,35.0)
+    #    proj= ccrs.Stereographic(central_latitude=60, central_longitude=140) 
+    #    fig = plt.figure(figsize=(20,16))
+    #    ax = fig.add_subplot(1, 1, 1, projection=proj)
+    #    ax.set_extent([108, 156, 17, 55], ccrs.PlateCarree())
+    #
+    ## 図法の変換
+    # 参照  https://scitools.org.uk/cartopy/docs/v0.14/crs/index.html                    
+    point_proj = proj.transform_point(*lonlat, ccrs.PlateCarree())
+    #
+    # pixel座標へ変換
+    # 参照　https://matplotlib.org/stable/tutorials/advanced/transforms_tutorial.html
+    point_pix = ax.transData.transform(point_proj)
+    #
+    # 図の座標へ変換                                                           
+    point_fig = ax.transAxes.inverted().transform(point_pix)
+    return point_fig, point_pix, point_proj
+
+
+# In[22]:
+
+
+## 極大/極小ピーク検出関数                                                             
+def detect_peaks(image, filter_size=3, dist_cut=5.0, flag=0):
+    # filter_size: この値xこの値 の範囲内の最大値のピークを検出                        
+    # dist_cut: この距離内のピークは1つにまとめる                                      
+    # flag:  0:maximum検出  0以外:minimum検出                                          
+    if flag==0:
+      local_max = maximum_filter(image,
+            footprint=np.ones((filter_size, filter_size)), mode='constant')
+      detected_peaks = np.ma.array(image, mask=~(image == local_max))
+    else:
+      local_min = minimum_filter(image,
+            footprint=np.ones((filter_size, filter_size)), mode='constant')
+      detected_peaks = np.ma.array(image, mask=~(image == local_min))
+    peaks_index = np.where((detected_peaks.mask != True))
+    # peak間の距離行例を求める                                                         
+    (x,y) = peaks_index
+    size=y.size
+    dist=np.full((y.size, y.size), -1.0)
+    for i in range(size):
+      for j in range(size):
+        if i == j:
+          dist[i][j]=0.0
+        elif i>j:
+          d = math.sqrt(((y[i] - y[j])*(y[i] - y[j]))
+                        +((x[i] - x[j])*(x[i] - x[j])))
+          dist[i][j]= d
+          dist[j][i]= d
+    # 距離がdist_cut内のpeaksの距離の和と、そのピーク番号を取得する 
+    Kinrin=[]
+    dSum=[]
+    for i in range(size):
+      tmpA=[]
+      distSum=0.0
+      for j in range(size):
+        if dist[i][j] < dist_cut and dist[i][j] > 0.0:
+          tmpA.append(j)
+          distSum=distSum+dist[i][j]
+      dSum.append(distSum)
+      Kinrin.append(tmpA)
+    # Peakから外すPeak番号を求める.  peak間の距離和が最も小さいものを残す              
+    cutPoint=[]
+    for i in range(size):
+      val = dSum[i]
+      val_i=image[x[i]][y[i]]
+      for k in Kinrin[i]:
+        val_k=image[x[k]][y[k]]
+        if flag==0 and val_i < val_k:
+            cutPoint.append(i)
+            break
+        if flag!=0 and val_i > val_k:
+            cutPoint.append(i)
+            break
+        if val > dSum[k]:
+            cutPoint.append(i)
+            break
+        if val == dSum[k] and i > k:
+            cutPoint.append(i)
+            break
+    # 戻り値用に外すpeak番号を配列から削除                                             
+    newx=[]
+    newy=[]
+    for i in range(size):
+      if (i in cutPoint):
+        continue
+      newx.append(x[i])
+      newy.append(y[i])
+    peaks_index=(np.array(newx),np.array(newy))
+    return peaks_index
+
+
+# In[23]:
+
+
+# 読み込むGRIB2形式ECMWFのファイル名
+#  ex.  20230520120000-12h-oper-fc.grib2
+if i_hourZ==0 or i_hourZ==12:
+    ecm_fn_t="{0:4d}{1:02d}{2:02d}{3:02d}0000-{4:d}h-oper-fc.grib2"
+else:
+    ecm_fn_t="{0:4d}{1:02d}{2:02d}{3:02d}0000-{4:d}h-scda-fc.grib2"
+ecm_fn= ecm_fn_t.format(i_year,i_month,i_day,i_hourZ,ft_hours)
+#
+# データOpen
+print(ecm_fn)
+grbs = pygrib.open(data_fld + ecm_fn)
+#
+# データ確認表示
+if False:
+    print(grbs)
+    for gr in grbs:
+        print(gr)
+
+
+# In[24]:
+
+
+### データ取得
+# 地上気圧(sp:単位Pa)
+grb_sp  = grbs(shortName="sp",typeOfLevel='surface',level=0)[0]
+# 海面校正気圧(msl:単位Pa)
+grb_msl = grbs(shortName="msl",typeOfLevel='meanSea',level=0)[0]
+# 10m高度風速(10u:単位m/s)
+grb_10u = grbs(shortName="10u",typeOfLevel='heightAboveGround',level=10)[0]
+# 10m高度風速(10v:単位m/s)
+grb_10v = grbs(shortName="10v",typeOfLevel='heightAboveGround',level=10)[0]
+# 2m気温(2t:単位K)
+grb_2t  = grbs(shortName="2t",typeOfLevel='heightAboveGround',level=2)[0]
+# 土壌気温(st:単位K)
+grb_st  = grbs(shortName="st",typeOfLevel='depthBelowLandLayer',level=0)[0]
+# 表面温度(skt:単位K)
+grb_skt = grbs(shortName="skt",typeOfLevel='surface',level=0)[0]
+# 初期値からの総降水量(tp:単位m)
+grb_tp  = grbs(shortName="tp",typeOfLevel='surface',level=0)[0]
+# 可降水量(tcwv:単位kg/m/m)
+grb_tcwv= grbs(shortName="tcwv",typeOfLevel='entireAtmosphere',level=0)[0]
+# 流出量(ro:単位m)
+grb_ro  = grbs(shortName="ro",typeOfLevel='surface',level=0)[0]
+# 海陸マスク(lsm:0 or 1)
+grb_lsm = grbs(shortName="lsm",typeOfLevel='surface',level=0)[0]
+#
+### 時刻取得
+validDate = grb_msl.validDate
+analDate = grb_msl.analDate
+#
+valPre, latPre, lonPre = grb_msl.data()     # 海面更生気圧(Pa)
+valSpf, latSpf, lonSpf = grb_sp.data()      # 地上気圧(Pa)
+val10u, lat10u, lon10u = grb_10u.data()     # 10m U-wind(m/s)
+val10v, lat10v, lon10v = grb_10v.data()     # 10m V-wind(m/s)
+val2tm, lat2tm, lon2tm = grb_2t.data()      # 2m Temperature(K)
+valTcwv,latTcwv,lonTcwv= grb_tcwv.data()    # 可降水量(kg/m/m)
+if ft_hours > 0:
+    valPrc, latPrc, lonPrc = grb_tp.data()      # 初期時刻からの総降水量(m)
+#
+# データClose
+grbs.close()
+
+
+# In[25]:
+
+
+## 算出のためにxarrayデータセットを作成   
+# 作図の便宜上 Omegaはlevel異なるが他と同じlevelとする
+if ft_hours > 0:
+    ds = xr.Dataset(
+       {
+           "Pre": (["lat", "lon"], valPre * 0.01 * units('hPa')),    # 海面更生
+           "Spl": (["lat", "lon"], valSpf * 0.01 * units('hPa')),    # 地上気圧                                                           
+           "u_wind": (["lat", "lon"], val10u * units('m/s')),
+           "v_wind": (["lat", "lon"], val10v * units('m/s')),
+           "Temperature": (["lat", "lon"], val2tm * units('K')),
+           "Precipitation": (["lat", "lon"], valPrc * 1000 * units('mm')),
+           "Tcwv":  (["lat", "lon"], valTcwv * units('kg/m/m'))
+       },
+       coords={
+           "time": np.array([validDate]),
+           "lat": np.array(latSpf[:,0]) * units('degrees_north'),
+           "lon": np.array(lonSpf[0,:]) * units('degrees_east')
+       }
+    )
+else:
+    ds = xr.Dataset(
+       {
+           "Pre": (["lat", "lon"], valPre * 0.01 * units('hPa')),    # 海面更生
+           "Spl": (["lat", "lon"], valSpf * 0.01 * units('hPa')),    # 地上気圧                                                           
+           "u_wind": (["lat", "lon"], val10u * units('m/s')),
+           "v_wind": (["lat", "lon"], val10v * units('m/s')),
+           "Temperature": (["lat", "lon"], val2tm * units('K')),
+           "Tcwv":  (["lat", "lon"], valTcwv * units('kg/m/m'))
+       },
+       coords={
+           "time": np.array([validDate]),
+           "lat": np.array(latSpf[:,0]) * units('degrees_north'),
+           "lon": np.array(lonSpf[0,:]) * units('degrees_east')
+       }
+    )
+# 単位も入力する
+ds['Pre'].attrs['units'] = 'hPa'
+ds['Spl'].attrs['units'] = 'hPa'
+ds['u_wind'].attrs['units']='m/s'
+ds['v_wind'].attrs['units']='m/s'
+ds['Temperature'].attrs['units']='K'
+ds['Tcwv'].attrs['units']='kg/m/m'
+ds['lat'].attrs['units'] = 'degrees_north'
+ds['lon'].attrs['units'] = 'degrees_east'
+if ft_hours > 0:
+    ds['Precipitation'].attrs['units']='mm'
+#
+# metpy仕様に変換
+dsp= ds.metpy.parse_cf()
+if False:
+    print(dsp)
+
+
+# In[26]:
+
+
+####  作図用処理                                                                                                           
+## 年月日                                                                                                    
+dt_v = validDate
+dt_i = analDate
+dt_str = (dt_i.strftime("%H00UTC%d%b%Y")).upper()
+dt_str2 = dt_i.strftime("%Y%m%d%H")
+### 境界データ作成
+# Make state boundaries feature
+states_provinces = cfeature.NaturalEarthFeature(category='cultural',
+                                                name='admin_1_states_provinces_lines',
+                                                scale='50m', facecolor='none')
+# Make country borders feature
+country_borders = cfeature.NaturalEarthFeature(category='cultural',
+                                               name='admin_0_countries',
+                                               scale='50m', facecolor='none')
+#
+## 図法指定                                                                             
+proj = ccrs.Stereographic(central_latitude=60, central_longitude=set_central_longitude)
+latlon_proj = ccrs.PlateCarree()
+## 図のSIZE指定inch                                                                        
+fig = plt.figure(figsize=(10,8))
+## 余白設定                                                                                
+plt.subplots_adjust(left=0, right=1, bottom=0.06, top=0.98)                  
+## 作図                                                                                    
+ax = fig.add_subplot(1, 1, 1, projection=proj)
+ax.set_extent(i_area, latlon_proj)
+#
+## 可降水量
+if disp_tcwv:
+    tcwv_hatchf = ax.contourf(dsp['lon'], dsp['lat'], dsp['Tcwv'],
+                             [0,1,5,10,20,30,40,50,60,70,80],
+                             colors=['white','cyan','palegreen','lime','yellow','orange',
+                                     'darkorange','red','mediumpurple','darkviolet','black'],
+                             extend='both',
+                             alpha=0.4, transform=latlon_proj)
+    tcwv_hatch = ax.contour(dsp['lon'], dsp['lat'], dsp['Tcwv'], np.arange(10,200,10),
+                           colors='red', linewidths=1, # linestyle='solid',
+                           transform=latlon_proj)
+    ax.clabel(tcwv_hatch, fontsize=8, inline=True, colors='blue',
+              inline_spacing=5, fmt='%i', rightside_up=True)
+    # colorbarの位置と大きさ指定                                                     
+    #  add_axes([左端の距離, 下端からの距離, 横幅, 縦幅])                            
+    ax_tcwv = fig.add_axes([0.1, 0.1, 0.8, 0.02])  # 図の中
+    cb_tcwv = fig.colorbar(tcwv_hatchf, orientation='horizontal', shrink=0.74,
+                           aspect=40, pad=0.01, cax=ax_tcwv)
+    cb_tcwv.set_label('TCWV (kg/m/m)')
+#
+## 積算降水量
+if disp_tp and ft_hours > 0:
+    prc_hatchf = ax.contourf(dsp['lon'], dsp['lat'],
+                             dsp['Precipitation'], [0,1,10,20,30,40,60,80,100],
+                             colors=['white','cyan','palegreen','lime','yellow','orange',
+                                     'darkorange','red'],
+    #                                 'darkorange','red','mediumpurple','darkviolet','black'],
+                             extend='both',
+                             alpha=0.4, transform=latlon_proj)
+    prc_hatch = ax.contour(dsp['lon'], dsp['lat'], dsp['Precipitation'], np.arange(10,200,10),
+                           colors='red', linewidths=1, # linestyle='solid',
+                           transform=latlon_proj)
+    ax.clabel(prc_hatch, fontsize=8, inline=True, colors='red',
+              inline_spacing=5, fmt='%i', rightside_up=True)
+    # colorbarの位置と大きさ指定                                                     
+    #  add_axes([左端の距離, 下端からの距離, 横幅, 縦幅])                            
+    #ax_reld = fig.add_axes([0.1, 0.0, 0.8, 0.02])  # 図の下
+    ax_prc = fig.add_axes([0.1, 0.1, 0.8, 0.02])  # 図の中
+    cb_prc = fig.colorbar(prc_hatchf, orientation='horizontal', shrink=0.74,
+                           aspect=40, pad=0.01, cax=ax_prc)
+#
+# 等温度線 実線
+dsp['Temperature'] = (dsp['Temperature']).metpy.convert_units(units.degC)  # Kelvin => Celsius
+cn_tmp0 = ax.contour(dsp['lon'], dsp['lat'],
+                     dsp['Temperature'],
+                     colors='green', alpha=0.5, linewidths=1.0, levels=levels_tmp0,
+                     transform=latlon_proj )
+#
+## 等圧線
+cn_pre0 = ax.contour(dsp['lon'], dsp['lat'],
+                     dsp['Pre'],
+                     colors='black', linewidths=1.0, levels=levels_pre0,
+                     transform=latlon_proj )
+cn_pre0B = ax.contour(dsp['lon'], dsp['lat'],
+                      dsp['Pre'],
+                      colors='black', linewidths=3.0, levels=levels_pre0B,
+                      transform=latlon_proj )
+ax.clabel(cn_pre0B, levels_pre0B, fontsize=12,
+          inline=True, inline_spacing=5,
+          fmt='%i', rightside_up=True, colors='black')
+## 海岸線
+ax.coastlines(resolution='50m', linewidth=1.6) # 海岸線の解像度を上げる
+if (flag_border):
+    ax.add_feature(states_provinces, edgecolor='black', linewidth=0.5)
+    ax.add_feature(country_borders, edgecolor='black', linewidth=0.5)
+#
+# グリッド線を引く                                                               
+xticks=np.arange(0,360.1,dlon)
+yticks=np.arange(-90,90.1,dlat)
+gl = ax.gridlines(crs=ccrs.PlateCarree()
+         , draw_labels=False
+         , linewidth=1, alpha=0.8)
+gl.xlocator = mticker.FixedLocator(xticks)
+gl.ylocator = mticker.FixedLocator(yticks)
+#
+## 風
+wind_slice = (slice(None, None, 5), slice(None, None, 5))
+ax.barbs(dsp['lon'][wind_slice[0]], dsp['lat'][wind_slice[1]],    
+         dsp['u_wind'].values[wind_slice] * 1.944,
+         dsp['v_wind'].values[wind_slice] * 1.944,
+         length=5.5,
+         pivot='middle', color='black', transform=latlon_proj)
+#
+## ピークマーク
+# 気圧 H
+maxid = detect_peaks(dsp['Pre'].values, filter_size=10, dist_cut=8.0)
+for i in range(len(maxid[0])):                                                      
+  wlon = dsp['lon'][maxid[1][i]]
+  wlat = dsp['lat'][maxid[0][i]]
+  # 図の範囲内に座標があるか確認                                                        
+  fig_z, _, _ = transform_lonlat_to_figure((wlon,wlat),ax,proj)
+  if ( fig_z[0] > 0.05 and fig_z[0] < 0.95  and fig_z[1] > 0.05 and fig_z[1] < 0.95):
+    ax.plot(wlon, wlat, marker='x' , markersize=4, color="blue",transform=latlon_proj)
+    ax.text(wlon, wlat + 0.5, 'H', size=16, color="blue", transform=latlon_proj)
+    val = dsp['Pre'].values[maxid[0][i]][maxid[1][i]]
+    ival = int(val)
+    ax.text(fig_z[0], fig_z[1] - 0.01, str(ival), size=12, color="blue",
+            transform=ax.transAxes,
+            verticalalignment="top", horizontalalignment="center")
+#
+# 気圧 L
+minid = detect_peaks(dsp['Pre'].values, filter_size=10, dist_cut=8.0,flag=1)
+for i in range(len(minid[0])):
+  wlon = dsp['lon'][minid[1][i]]
+  wlat = dsp['lat'][minid[0][i]]
+  # 図の範囲内に座標があるか確認                                                        
+  fig_z, _, _ = transform_lonlat_to_figure((wlon,wlat),ax,proj)
+  if ( fig_z[0] > 0.05 and fig_z[0] < 0.95  and fig_z[1] > 0.05 and fig_z[1] < 0.95):
+    ax.plot(wlon, wlat, marker='x' , markersize=4, color="red",transform=latlon_proj)
+    ax.text(wlon, wlat + 0.5, 'L', size=16, color="red", transform=latlon_proj)
+    val = dsp['Pre'].values[minid[0][i]][minid[1][i]]
+    ival = int(val)
+    ax.text(fig_z[0], fig_z[1] - 0.01, str(ival), size=12, color="red",
+            transform=ax.transAxes,
+            verticalalignment="top", horizontalalignment="center")
+#
+## 図の説明
+if disp_tp and ft_hours > 0:
+    fig.text(0.5,0.01,"ECM FT{0:d} IT:".format(ft_hours)+dt_str+
+             " Surface Pre, Wind, Temp, Total Precipitation(FT0-)",
+             ha='center',va='bottom', size=15)
+elif disp_tcwv:
+    fig.text(0.5,0.01,"ECM FT{0:d} IT:".format(ft_hours)+dt_str+
+             " Surface Pre, Wind, Temp, Total Column Water vapor",
+             ha='center',va='bottom', size=15)
+else:
+    fig.text(0.5,0.01,"ECM FT{0:d} IT:".format(ft_hours)+dt_str+
+             " Surface Pre, Wind, Temp",
+             ha='center',va='bottom', size=15)
+#
+## file出力 
+output_fig_nm="ecm_{0}UTC_FT{1:03d}_faxSrPre{2}.png".format(dt_str2,ft_hours,str_area)
+plt.savefig(output_fig_nm)
+print("output:{}".format(output_fig_nm))
+#
+## 表示
+plt.show()
+
+
+# In[ ]:
+
+
+
+
