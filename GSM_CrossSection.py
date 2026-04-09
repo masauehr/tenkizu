@@ -277,7 +277,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh,
     out_fn = f"{output_dir}/{dt_str2}_FT{ft_hours:03d}h_CrossSection.png"
     plt.savefig(out_fn, dpi=150, bbox_inches='tight')
     print(f"[{ft_hours:4d}h] 出力: {out_fn}")
-    plt.show()
+    # plt.show()  # 画面表示する場合はコメントアウトを外す
     plt.close()
     return True
 

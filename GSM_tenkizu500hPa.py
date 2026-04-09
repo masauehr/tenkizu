@@ -357,16 +357,12 @@ gl.ylocator = mticker.FixedLocator(yticks)
 fig.text(0.5,0.01,
          "GSM FT{0:d} IT:".format(ft_hours)+dt_str+" 500hPa Height(m),VORT" ,
          ha='center',va='bottom', size=18)
-plt.show()
-
-
-# In[10]:
-
-
 ## 出力                                                                                    
 out_fn="gsm_{0}UTC_FT{1:03d}_50.png".format(dt_str2,ft_hours)
 plt.savefig(out_fn)
 print("output:{}".format(out_fn))
+# plt.show()  # 画面表示する場合はコメントアウトを外す
+plt.close()
 
 
 # In[ ]:
