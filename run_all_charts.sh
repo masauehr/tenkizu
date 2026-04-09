@@ -45,8 +45,7 @@ run_script() {
 }
 
 # GSM系（RISHサーバーからデータ取得）
-run_script "GSM 500hPa高度・渦度"      kurora_tenkizu.py       "$INIT_TIME" 0000 "$N_STEPS"
-run_script "GSM 500hPa高度・渦度(詳細)" GSM_tenkizu500hPa.py    "$INIT_TIME" 0000 "$N_STEPS"
+run_script "GSM 500hPa高度・渦度"      GSM_tenkizu500hPa.py    "$INIT_TIME" 0000 "$N_STEPS"
 run_script "GSM 850hPa Qベクター"       GSM_QVector850hPa.py    "$INIT_TIME" 0000 "$N_STEPS"
 run_script "GSM 300hPa ジェット"        GSM_Jet300hPa.py        "$INIT_TIME" 0000 "$N_STEPS"
 run_script "GSM 不安定域分布"           GSM_Instability.py      "$INIT_TIME" 0000 "$N_STEPS"
