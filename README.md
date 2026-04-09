@@ -1,6 +1,6 @@
 # tenkizu — GSM 500hPa天気図作成ツール
 
-黒良さんのNote（https://note.com/rkurora/n/n200fdd8f1aa1）をベースに、  
+黒良さんのNote（https://note.com/rkurora/n/n200fdd8f1aa1 ）をベースに、  
 GSM（全球スペクトルモデル）GRIB2データから500hPa天気図を作成するツールです。
 
 ---
