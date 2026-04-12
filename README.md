@@ -123,6 +123,8 @@ tenkizu/
 ├── ECM_Fax78.py            # ECMWF FAX78（850hPa気温・風・700hPa発散）
 ├── ECM_SurfacePressure.py  # ECMWF 地上気圧（±可降水量/積算降水量）
 ├── run_all_charts.sh       # 全12スクリプト一括実行
+├── run_gsm_auto.py         # GSM系：最新データ自動検索・一括生成
+├── run_ecm_auto.py         # ECM系：最新データ自動検索・一括生成
 ├── kurora_tenkizu.py       # 旧メイン版（互換維持）
 ├── download_gsm.py         # GSM GRIB2事前ダウンロード専用
 ├── run_pipeline.sh         # ダウンロード→旧メイン版 パイプライン
@@ -234,6 +236,51 @@ python ECM_Fax57.py 2026041200 0 5          # FT=0,6,12,18,24h 5枚
 python ECM_SurfacePressure.py 2026041200 0 5 --tcwv   # 可降水量シェードあり
 python ECM_SurfacePressure.py 2026041200 6 3 --tp     # 積算降水量（FT>0必須）
 ```
+
+---
+
+### 自動データ取得＆一括生成（推奨）
+
+最新の init_time を自動検索してデータ取得・全スクリプトを一括実行するスクリプト。
+
+#### GSM系: `run_gsm_auto.py`
+
+RISHサーバーのディレクトリ一覧を確認して最新の init_time を特定し、全8本のGSMスクリプトを実行する。
+
+```bash
+python run_gsm_auto.py                              # 最新データ、FT=0,12,24,36,48h（keyモード）
+python run_gsm_auto.py --steps 5                   # 最新データ、FT=0,6,12,18,24h（連続5枚）
+python run_gsm_auto.py --init-time 2026041200      # 初期時刻を手動指定
+python run_gsm_auto.py --init-time 2026041200 --start-ft 0100 --steps 3  # FT=24,30,36h
+```
+
+| オプション | 説明 | デフォルト |
+|-----------|------|-----------|
+| `--init-time` | 初期時刻 YYYYMMDDHH（省略時は自動検索） | 自動 |
+| `--steps` | 連続枚数（6h間隔。省略時はkeyモード） | keyモード |
+| `--start-ft` | 開始予報時間（DDHH形式、`--steps` 使用時） | `0000` |
+
+#### ECMWF系: `run_ecm_auto.py`
+
+ECMWF Open Dataサーバーへの HEAD リクエストで最新の init_time を特定し、全4本のECMスクリプトを実行する。
+
+```bash
+python run_ecm_auto.py                              # 最新データ、FT=0,12,24,36,48h（keyモード）
+python run_ecm_auto.py --steps 5                   # 最新データ、FT=0,6,12,18,24h（連続5枚）
+python run_ecm_auto.py --init-time 2026041200      # 初期時刻を手動指定
+python run_ecm_auto.py --tcwv                      # 地上気圧図に可降水量シェードを追加
+python run_ecm_auto.py --tp                        # 地上気圧図に積算降水量シェードを追加（FT>0のみ）
+```
+
+| オプション | 説明 | デフォルト |
+|-----------|------|-----------|
+| `--init-time` | 初期時刻 YYYYMMDDHH（省略時は自動検索） | 自動 |
+| `--steps` | 連続枚数（6h間隔。省略時はkeyモード） | keyモード |
+| `--start-ft` | 開始予報時間（時間数、`--steps` 使用時） | `0` |
+| `--tcwv` | `ECM_SurfacePressure.py` に可降水量シェードを追加 | なし |
+| `--tp` | `ECM_SurfacePressure.py` に積算降水量シェードを追加（FT>0必須） | なし |
+
+> **ECMWF Open Data は最新約5日分のみ無償**。過去データは Copernicus CDS API が必要。
 
 ---
 

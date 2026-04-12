@@ -208,3 +208,62 @@ bash run_all_charts.sh 2026041200 0000 key   # FT=0,12,24,36,48h 全スクリプ
 
 keyモード実装方法: bash内で `KEY_FTS_DDHH=(0000 0012 0100 0112 0200)` の配列をループし、  
 各FTについて `n_steps=1` で個別スクリプトを呼び出す方式。
+
+---
+
+## GSM/ECM自動データ取得＆一括生成スクリプトの追加（2026-04-12）
+
+### 背景
+
+`run_all_charts.sh` では init_time を手動指定する必要があった。  
+最新データを自動で検索・取得・描画まで一括実行できるPythonスクリプトを追加した。
+
+### run_gsm_auto.py
+
+**機能**: RISHサーバーを検索して最新のGSM init_timeを自動特定し、全8本のGSMスクリプトを実行。
+
+**init_time 自動検索ロジック**:
+- 現在UTC時刻から最大4日分遡って確認
+- 各日の12UTC・00UTC を優先度順に試行
+- 初期時刻から3時間以内はデータ未公開として除外
+- RISHサーバーのディレクトリHTMLを `BeautifulSoup` でパースし `FD0000` ファイルの存在を確認
+
+**実行スクリプト一覧**:
+```python
+GSM_SCRIPTS = [
+    "GSM_tenkizu500hPa.py", "GSM_QVector850hPa.py", "GSM_Jet300hPa.py",
+    "GSM_Instability.py",   "GSM_CrossSection.py",  "GSM_fax57.py",
+    "GSM_fax78.py",         "GSM_faxSrfPre.py",
+]
+```
+
+**引数**: `--init-time`（手動指定）, `--steps`（連続枚数）, `--start-ft`（開始DDHH）
+
+### run_ecm_auto.py
+
+**機能**: ECMWF Open Dataサーバーを検索して最新のECM init_timeを自動特定し、全4本のECMスクリプトを実行。
+
+**init_time 自動検索ロジック**:
+- 現在UTC時刻から最大6日分遡って確認（ECMは5日分公開）
+- 各日の12UTC・00UTC を優先度順に試行
+- 初期時刻から4時間以内はデータ未公開として除外（ECMはGSMより公開が遅い）
+- `requests.head()` で `FD=0h` ファイルの HTTP 200 を確認
+
+**実行スクリプト一覧**:
+```python
+ECM_SCRIPTS = [
+    "ECM_EPT850hPa.py", "ECM_Fax57.py",
+    "ECM_Fax78.py",     "ECM_SurfacePressure.py",
+]
+```
+
+**引数**: `--init-time`, `--steps`, `--start-ft`, `--tcwv`, `--tp`  
+`--tcwv`/`--tp` は `ECM_SurfacePressure.py` にのみ渡す。`--tp` は FT=0 を自動スキップ。
+
+### 設計上の判断
+
+- **FT形式の差異**: GSMはDDHH形式（例: `0100`=24h）、ECMは時間数（例: `24`）。  
+  keyモードのFTリストも形式に合わせて別定義 (`KEY_FTS_DDHH = [0, 12, 100, 112, 200]` / `KEY_FTS_H = [0, 12, 24, 36, 48]`)。
+- **subprocess.run() の引数**: 各描画スクリプトへ `[sys.executable, script, init_time, ft, "1"]` の形で渡す。  
+  n_steps=1 固定でFTをループし、エラー時は次のFTに継続する。
+- **作業ディレクトリ**: `os.chdir(Path(__file__).parent.resolve())` でスクリプトのあるディレクトリに移動してから実行。
