@@ -267,3 +267,85 @@ ECM_SCRIPTS = [
 - **subprocess.run() の引数**: 各描画スクリプトへ `[sys.executable, script, init_time, ft, "1"]` の形で渡す。  
   n_steps=1 固定でFTをループし、エラー時は次のFTに継続する。
 - **作業ディレクトリ**: `os.chdir(Path(__file__).parent.resolve())` でスクリプトのあるディレクトリに移動してから実行。
+
+---
+
+## GSM 850hPa相当温位・ECM 500hPa渦度追加 / ファイル名衝突解消 / PPTX自動生成（2026-04-13）
+
+### 1. ファイル名衝突問題の発見と解消
+
+`run_all_charts.sh` は GSM → ECM の順でスクリプトを実行するが、  
+同名の出力ファイルが `output/` に存在すると ECM が GSM を上書きしていた。
+
+**衝突していたファイル名:**
+
+| スクリプト | 修正前 | 修正後 |
+|-----------|--------|--------|
+| `GSM_fax57.py` | `*_Fax57.png` | `*_GSM_Fax57.png` |
+| `GSM_fax78.py` | `*_Fax78.png` | `*_GSM_Fax78.png` |
+| `GSM_faxSrfPre.py` | `*_SurfacePressure.png` | `*_GSM_SurfacePressure.png` |
+| `ECM_EPT850hPa.py` | `*_850hPa_EPT.png` | `*_ECM_850hPa_EPT.png` |
+| `ECM_Fax57.py` | `*_Fax57.png` | `*_ECM_Fax57.png` |
+| `ECM_Fax78.py` | `*_Fax78.png` | `*_ECM_Fax78.png` |
+| `ECM_SurfacePressure.py` | `*_SurfacePressure.png` | `*_ECM_SurfacePressure.png` |
+
+### 2. 新規スクリプト作成
+
+#### GSM_EPT850hPa.py
+
+- `ECM_EPT850hPa.py` をベースに、データ取得を `ensure_file()` + RISHサーバーに変更
+- 読み込み変数: `u`, `v`, `t`, `r`（850hPa）
+- MetPy で露点温度 → 相当温位を計算
+- 出力: `*_GSM_850hPa_EPT.png`
+
+#### ECM_tenkizu500hPa.py
+
+- `GSM_tenkizu500hPa.py` をベースに、データ取得を `ensure_file_ecm()` + ECMWF Open Dataに変更
+- 読み込み変数: `gh`（500hPa）、`u`/`v` → MetPy で渦度計算
+- 出力: `*_ECM_500hPa_Height_VORT.png`
+
+### 3. run_all_charts.sh の更新
+
+新スクリプト2本を追加し、計14スクリプト構成に変更:
+- GSM系 9本: 既存8本 + `GSM_EPT850hPa.py`
+- ECM系 5本: 既存4本 + `ECM_tenkizu500hPa.py`
+
+### 4. PNG → PowerPoint 自動生成スクリプト
+
+#### make_pptx.py
+
+`output/` 内の PNG を PowerPoint スライドに自動貼り付け。  
+Pillow でピクセルサイズを取得してアスペクト比を保持、セル内中央配置。
+
+| スライドグループ | モード | 内容 |
+|--------------|------|------|
+| GSM: 500hPa渦度/地上気圧 | 2×2 | 2FT × 2種類 = 4画像/スライド |
+| GSM: Fax57/Fax78 | 2×2 | 同上 |
+| GSM: 300hPaジェット/Qベクター | 2×2 | 同上 |
+| GSM: 850hPa相当温位 | 4in1 | FT=12,24,36,48h を2×2配置 |
+| ECM: 500hPa渦度/地上気圧 | 2×2 | 同上 |
+| ECM: Fax57/Fax78 | 2×2 | 同上 |
+| ECM: 850hPa相当温位 | 4in1 | FT=12,24,36,48h を2×2配置 |
+
+スライドサイズ: 4:3 標準（10×7.5インチ）
+
+#### make_pptx2.py
+
+残り画像種別の補完スクリプト。
+
+| スライドグループ | モード | 内容 |
+|--------------|------|------|
+| 300hPaジェット/Fax57 | 2×2 | 同上 |
+| 大気不安定域/850hPa相当温位 | 2×2 | 同上 |
+| 鉛直断面図 | 1×2 | 縦長画像を1行2列（全高使用） |
+
+#### スライドモードの設計
+
+- `"2x2"`: 1スライドに 2FT × 上下2種類 = 4セル
+- `"4in1"`: ft_filter=[12,24,36,48] の固定4枚を同一スライドに2×2配置
+- `"1x2"`: 1行2列（鉛直断面図などの縦長画像向け）
+
+### 5. samples/ ディレクトリ
+
+全出力種別のサンプル画像（計16枚）を `samples/` に配置し GitHub にアップロード。  
+各種別の最新 init_time の FT=0h（または最小FT）を1枚ずつ選択。
