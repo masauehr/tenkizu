@@ -31,7 +31,7 @@ import requests
 
 import metpy.calc as mpcalc
 from metpy.units import units
-from scipy.ndimage import maximum_filter, minimum_filter
+from scipy.ndimage import maximum_filter, minimum_filter, uniform_filter
 
 ECM_BASE_URL = "https://data.ecmwf.int/forecasts"
 HEADERS  = {"User-Agent": "Mozilla/5.0 (compatible; ECM-Downloader/1.0)"}
@@ -179,6 +179,16 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, disp_tcwv, disp_tp, outp
     valTcwv, latTcwv, lonTcwv = grb_tcwv.data()
     if ft_hours > 0:
         valPrc, latPrc, lonPrc = grb_tp.data()
+
+    # ECM(0.25°)をGSM並みの粗さに平滑化（3×3格子平均）
+    _s = 3
+    valPre  = uniform_filter(valPre,  size=_s)
+    val10u  = uniform_filter(val10u,  size=_s)
+    val10v  = uniform_filter(val10v,  size=_s)
+    val2tm  = uniform_filter(val2tm,  size=_s)
+    valTcwv = uniform_filter(valTcwv, size=_s)
+    if ft_hours > 0:
+        valPrc = uniform_filter(valPrc, size=_s)
 
     # データセット構築
     data_vars = {

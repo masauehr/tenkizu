@@ -28,7 +28,7 @@ import requests
 
 import metpy.calc as mpcalc
 from metpy.units import units
-from scipy.ndimage import maximum_filter, minimum_filter
+from scipy.ndimage import maximum_filter, minimum_filter, uniform_filter
 
 ECM_BASE_URL = "https://data.ecmwf.int/forecasts"
 HEADERS  = {"User-Agent": "Mozilla/5.0 (compatible; ECM-Downloader/1.0)"}
@@ -173,6 +173,12 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHpDiv, tagHp, output_
     valTm,  latTm,  lonTm  = grbTm.data(lat1=latS,  lat2=latN, lon1=lonW, lon2=lonE)
     valRh,  latRh,  lonRh  = grbRh.data(lat1=latS,  lat2=latN, lon1=lonW, lon2=lonE)
     valDiv, latDiv, lonDiv = grbDiv.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
+
+    # ECM(0.25°)をGSM並みの粗さに平滑化（3×3格子平均）
+    _s = 3
+    valWu  = uniform_filter(valWu,  size=_s)
+    valWv  = uniform_filter(valWv,  size=_s)
+    valTm  = uniform_filter(valTm,  size=_s)
 
     # 発散のスムージング
     passes, s_n = 16, 9

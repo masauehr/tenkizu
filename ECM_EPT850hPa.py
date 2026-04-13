@@ -32,6 +32,7 @@ import requests
 
 import metpy.calc as mpcalc
 from metpy.units import units
+from scipy.ndimage import uniform_filter
 
 # ECMWF Open Data ベースURL
 ECM_BASE_URL = "https://data.ecmwf.int/forecasts"
@@ -143,6 +144,14 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir):
     valWv, latWv, lonWv = grbWv.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
     valTm, latTm, lonTm = grbTm.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
     valRh, latRh, lonRh = grbRh.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
+
+    # ECM(0.25°)をGSM並みの粗さに平滑化（3×3格子平均）
+    _s = 3
+    valHt = uniform_filter(valHt, size=_s)
+    valWu = uniform_filter(valWu, size=_s)
+    valWv = uniform_filter(valWv, size=_s)
+    valTm = uniform_filter(valTm, size=_s)
+    valRh = uniform_filter(valRh, size=_s)
 
     ds = xr.Dataset(
         {
