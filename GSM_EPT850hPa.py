@@ -1,19 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ECMWF 850hPa 相当温位・風 天気図描画スクリプト
-# 元コード: g2e_ept_note版.ipynb  (2023/07/26 Ryuta Kurora)
-# 修正: 引数対応・自動DL試行・複数FT対応 20260409上原政博
-#
-# データ取得について:
-#   ECMWFデータは以下の方法で取得可能:
-#   1. ECMWF Open Data（最新5日分のみ無償）
-#      URL: https://data.ecmwf.int/forecasts/{YYYYMMDD}/{HH}z/ifs/0p25/{oper|scda}/
-#   2. Copernicus CDS API（過去データ、要登録）
-#      https://cds.climate.copernicus.eu/
+# GSM 850hPa 相当温位・風 天気図描画スクリプト
+# ECM_EPT850hPa.py のGSM版: pygrib(RISHサーバーGRIB2)からデータを読み込む
+# 作成: 20260413 上原政博
 
 import os
-os.environ['PROJ_LIB'] = '/opt/anaconda3/envs/met_env_310/share/proj'  # ★importの前に設定！
+os.environ['PROJ_LIB'] = '/opt/anaconda3/envs/met_env_310/share/proj'
 
 from pyproj import datadir, CRS
 datadir.set_data_dir(os.environ['PROJ_LIB'])
@@ -33,30 +26,18 @@ import requests
 import metpy.calc as mpcalc
 from metpy.units import units
 
-# ECMWF Open Data ベースURL
-ECM_BASE_URL = "https://data.ecmwf.int/forecasts"
-HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ECM-Downloader/1.0)"}
-DATA_DIR = "./data/ecm"
+BASE_URL = "http://database.rish.kyoto-u.ac.jp/arch/jmadata/data/gpv/original"
+HEADERS  = {"User-Agent": "Mozilla/5.0 (compatible; GSM-Downloader/1.0)"}
 
 
-def ensure_file_ecm(ecm_path, ecm_fn, year, month, day, hour):
-    """
-    ECMWFデータファイルが存在しない場合、ECMWF Open Dataからダウンロードを試みる。
-    注意: ECMWF Open Dataは最新5日分のみ無償公開。過去データはCDS APIが必要。
-    """
-    if os.path.exists(ecm_path):
+def ensure_file(gr_path, gr_fn, year, month, day):
+    if os.path.exists(gr_path):
         return True
-
-    print(f"ECMWFデータファイルが見つかりません: {ecm_fn}")
-    print("ECMWF Open Dataからダウンロードを試みます（最新5日分のみ利用可）...")
-
-    # oper（00/12UTC）か scda（06/18UTC）かを判定
-    sub_dir = "oper" if hour in (0, 12) else "scda"
-    url = f"{ECM_BASE_URL}/{year:04d}{month:02d}{day:02d}/{hour:02d}z/ifs/0p25/{sub_dir}/{ecm_fn}"
-
-    dest = Path(ecm_path)
+    print(f"データファイルが見つかりません: {gr_fn}")
+    print("RISHサーバーからダウンロードを試みます...")
+    url  = f"{BASE_URL}/{year}/{month:02d}/{day:02d}/{gr_fn}"
+    dest = Path(gr_path)
     dest.parent.mkdir(parents=True, exist_ok=True)
-
     try:
         with requests.get(url, headers=HEADERS, stream=True, timeout=120) as r:
             r.raise_for_status()
@@ -70,75 +51,70 @@ def ensure_file_ecm(ecm_path, ecm_fn, year, month, day, hour):
                         print(f"\r  {downloaded/total*100:.1f}% ({downloaded/1048576:.1f}/{total/1048576:.1f} MB)",
                               end="", flush=True)
             print()
-        print(f"ダウンロード完了: {ecm_fn} ({dest.stat().st_size/1048576:.1f} MB)")
+        print(f"ダウンロード完了: {gr_fn} ({dest.stat().st_size/1048576:.1f} MB)")
         return True
     except requests.HTTPError as e:
-        print(f"\nダウンロード失敗（HTTP {e.response.status_code}）")
-        if e.response.status_code == 404:
-            print("  データが存在しません。過去データはCDS API (https://cds.climate.copernicus.eu) を利用してください。")
-        if dest.exists():
-            dest.unlink()
+        print(f"\nダウンロード失敗（HTTP {e.response.status_code}）: {url}")
+        if dest.exists(): dest.unlink()
         return False
     except requests.RequestException as e:
         print(f"\nダウンロード失敗: {e}")
-        if dest.exists():
-            dest.unlink()
+        if dest.exists(): dest.unlink()
         return False
 
 
-def build_ft_list(start_ft, n_steps, step=6):
-    """start_ftからn_steps個のFTリスト（時間）を生成する（デフォルト6h間隔）"""
-    return [start_ft + i * step for i in range(n_steps)]
+def ddhh_to_hours(ddhh):
+    return (ddhh // 100) * 24 + (ddhh % 100)
+
+def hours_to_ddhh(hours):
+    return (hours // 24) * 100 + (hours % 24)
+
+def build_ft_list(start_ddhh, n_steps):
+    start_h = ddhh_to_hours(start_ddhh)
+    return [hours_to_ddhh(start_h + i * 6) for i in range(n_steps)]
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='ECMWF GRIB2から850hPa相当温位・風天気図を描画する',
+        description='GSM GRIB2から850hPa相当温位・風天気図を描画する',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 使用例:
-  python ECM_EPT850hPa.py 2023052318 0 1     # FT=0h 1枚
-  python ECM_EPT850hPa.py 2023052318 0 5     # FT=0,6,12,18,24h 5枚
-  python ECM_EPT850hPa.py 2023052312 0 3 850 # 850hPa
-
-引数説明:
-  init_time: 初期時刻 YYYYMMDDHH（UTC）
-  start_ft : 開始予報時間（時間数）例: 0, 12, 24
-  n_steps  : 作成する枚数（6h間隔）
-  level    : 気圧面 hPa（省略可、デフォルト: 850）
+  python GSM_EPT850hPa.py 2026041200           # FT=0h 1枚
+  python GSM_EPT850hPa.py 2026041200 0000 5   # FT=0,6,12,18,24h 5枚
+  python GSM_EPT850hPa.py 2026041200 0012 1   # FT=12h 1枚
         """
     )
     parser.add_argument('init_time', type=str, help='初期時刻 YYYYMMDDHH（UTC）')
-    parser.add_argument('start_ft',  type=int, nargs='?', default=0, help='開始予報時間（時間数）例: 0, 12, 24')
-    parser.add_argument('n_steps',   type=int, nargs='?', default=1, help='作成する枚数（6h間隔）')
-    parser.add_argument('level',     type=int, nargs='?', default=850, help='気圧面 hPa（デフォルト: 850）')
+    parser.add_argument('start_ft',  type=str, nargs='?', default='0000',
+                        help='開始予報時間 DDHH形式（デフォルト: 0000）')
+    parser.add_argument('n_steps',   type=int, nargs='?', default=1,
+                        help='作成する枚数（6h間隔、デフォルト: 1）')
+    parser.add_argument('level',     type=int, nargs='?', default=850,
+                        help='気圧面 hPa（デフォルト: 850）')
     return parser.parse_args()
 
 
-def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir):
-    # ECMWFファイル名を構築
-    if i_hourZ in (0, 12):
-        ecm_fn = f"{i_year:04d}{i_month:02d}{i_day:02d}{i_hourZ:02d}0000-{ft_hours:d}h-oper-fc.grib2"
-    else:
-        ecm_fn = f"{i_year:04d}{i_month:02d}{i_day:02d}{i_hourZ:02d}0000-{ft_hours:d}h-scda-fc.grib2"
-    ecm_path = f"{DATA_DIR}/{ecm_fn}"
+def plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, tagHp, output_dir):
+    ft_hours = ddhh_to_hours(ft_ddhh)
 
-    if not ensure_file_ecm(ecm_path, ecm_fn, i_year, i_month, i_day, i_hourZ):
+    gr_fn   = f"Z__C_RJTD_{i_year:04d}{i_month:02d}{i_day:02d}{i_hourZ:02d}0000_GSM_GPV_Rgl_FD{ft_ddhh:04d}_grib2.bin"
+    gr_path = f"./data_gsm/{gr_fn}"
+
+    if not ensure_file(gr_path, gr_fn, i_year, i_month, i_day):
         print(f"スキップ: FT={ft_hours}h（データ取得失敗）")
         return False
 
-    print(f"[{ft_hours:4d}h] データ読み込み: {ecm_fn}")
+    print(f"[{ft_hours:4d}h] データ読み込み: {gr_fn}")
 
-    grbs  = pygrib.open(ecm_path)
-    grbHt = grbs(shortName="gh", typeOfLevel='isobaricInhPa', level=tagHp)[0]
-    grbWu = grbs(shortName="u",  typeOfLevel='isobaricInhPa', level=tagHp)[0]
-    grbWv = grbs(shortName="v",  typeOfLevel='isobaricInhPa', level=tagHp)[0]
-    grbTm = grbs(shortName="t",  typeOfLevel='isobaricInhPa', level=tagHp)[0]
-    grbRh = grbs(shortName="r",  typeOfLevel='isobaricInhPa', level=tagHp)[0]
+    grbs  = pygrib.open(gr_path)
+    grbWu = grbs(shortName="u", typeOfLevel='isobaricInhPa', level=tagHp)[0]
+    grbWv = grbs(shortName="v", typeOfLevel='isobaricInhPa', level=tagHp)[0]
+    grbTm = grbs(shortName="t", typeOfLevel='isobaricInhPa', level=tagHp)[0]
+    grbRh = grbs(shortName="r", typeOfLevel='isobaricInhPa', level=tagHp)[0]
     grbs.close()
 
     latS, latN, lonW, lonE = -20, 80, 70, 190
-    valHt, latHt, lonHt = grbHt.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
     valWu, latWu, lonWu = grbWu.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
     valWv, latWv, lonWv = grbWv.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
     valTm, latTm, lonTm = grbTm.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
@@ -146,20 +122,18 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir):
 
     ds = xr.Dataset(
         {
-            "Geopotential_height": (["lat", "lon"], valHt),
-            "u_wind":              (["lat", "lon"], valWu),
-            "v_wind":              (["lat", "lon"], valWv),
-            "Temperature":         (["lat", "lon"], valTm),
-            "RelativHumidity":     (["lat", "lon"], valRh * 0.01),
+            "u_wind":          (["lat", "lon"], valWu * units('m/s')),
+            "v_wind":          (["lat", "lon"], valWv * units('m/s')),
+            "Temperature":     (["lat", "lon"], valTm * units('K')),
+            "RelativHumidity": (["lat", "lon"], valRh * 0.01),
         },
         coords={
-            "time":  np.array([grbHt.validDate]),
+            "time":  np.array([grbTm.validDate]),
             "level": np.array(tagHp) * units.hPa,
-            "lat":   np.array(latHt[:, 0]) * units('degrees_north'),
-            "lon":   np.array(lonHt[0, :]) * units('degrees_east'),
+            "lat":   np.array(latTm[:, 0]) * units('degrees_north'),
+            "lon":   np.array(lonTm[0, :]) * units('degrees_east'),
         },
     )
-    ds['Geopotential_height'].attrs['units'] = 'm'
     ds['u_wind'].attrs['units']          = 'm/s'
     ds['v_wind'].attrs['units']          = 'm/s'
     ds['Temperature'].attrs['units']     = 'K'
@@ -174,11 +148,10 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir):
     dsp['Equivalent_Potential_temperature'] = mpcalc.equivalent_potential_temperature(
         dsp['level'], dsp['Temperature'], dsp['dewpoint_temperature'])
 
-    dt_i    = grbHt.analDate
+    dt_i    = grbTm.analDate
     dt_str  = (dt_i.strftime("%H00UTC%d%b%Y")).upper()
     dt_str2 = dt_i.strftime("%Y%m%d%H")
 
-    # 相当温位等値線設定
     levels_ept0  = np.arange(270, 390,  3)
     levels_ept0i = np.arange(270, 390,  3)
     levels_ept1  = np.arange(270, 390, 15)
@@ -209,7 +182,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir):
                          colors='black', linewidths=0.3, levels=levels_ept0, transform=latlon_proj)
     ax.clabel(cn_ept0, levels_ept0i, fontsize=8, inline=True,
               inline_spacing=5, fmt='%i', rightside_up=True, colors='black')
-    # EPT等値線（太線）
+    # EPT等値線（太線15K間隔）
     cn_ept1 = ax.contour(dsp['lon'], dsp['lat'], dsp['Equivalent_Potential_temperature'],
                          colors='black', linewidths=1.0, levels=levels_ept1, transform=latlon_proj)
     ax.clabel(cn_ept1, levels_ept1, fontsize=12, inline=True,
@@ -230,14 +203,13 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir):
              length=5.5, pivot='middle', color='black', transform=latlon_proj)
 
     fig.text(0.5, 0.01,
-             f"ECM FT{ft_hours:d}h IT:{dt_str} {tagHp}hPa EPT(K), Wind",
+             f"GSM FT{ft_hours:d}h IT:{dt_str} {tagHp}hPa EPT(K), Wind",
              ha='center', va='bottom', size=15)
 
     os.makedirs(output_dir, exist_ok=True)
-    out_fn = f"{output_dir}/{dt_str2}_FT{ft_hours:03d}h_ECM_{tagHp}hPa_EPT.png"
+    out_fn = f"{output_dir}/{dt_str2}_FT{ft_hours:03d}h_GSM_{tagHp}hPa_EPT.png"
     plt.savefig(out_fn, dpi=150, bbox_inches='tight')
     print(f"[{ft_hours:4d}h] 出力: {out_fn}")
-    # plt.show()  # 画面表示する場合はコメントアウトを外す
     plt.close()
     return True
 
@@ -253,15 +225,16 @@ def main():
     i_day   = int(init_str[6:8])
     i_hourZ = int(init_str[8:10])
 
-    ft_list = build_ft_list(args.start_ft, args.n_steps)
+    start_ddhh = int(args.start_ft)
+    ft_list    = build_ft_list(start_ddhh, args.n_steps)
 
     print(f"初期時刻: {init_str} UTC  気圧面: {args.level}hPa")
-    print(f"予報時間: FT{ft_list[0]}h〜FT{ft_list[-1]}h（{args.n_steps}枚）")
+    print(f"予報時間: FT{ddhh_to_hours(start_ddhh)}h〜FT{ddhh_to_hours(ft_list[-1])}h（{args.n_steps}枚）")
     print()
 
     success = 0
-    for ft in ft_list:
-        if plot_one(i_year, i_month, i_day, i_hourZ, ft, args.level, "./output"):
+    for ft_ddhh in ft_list:
+        if plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, args.level, "./output"):
             success += 1
     print(f"\n完了: {success}/{args.n_steps}枚 出力先: ./output/")
 

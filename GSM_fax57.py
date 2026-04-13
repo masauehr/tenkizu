@@ -265,7 +265,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, output_dir):
              ha='center', va='bottom', size=18)
 
     os.makedirs(output_dir, exist_ok=True)
-    out_fn = f"{output_dir}/{dt_str2}_FT{ft_hours:03d}h_Fax57.png"
+    out_fn = f"{output_dir}/{dt_str2}_FT{ft_hours:03d}h_GSM_Fax57.png"
     plt.savefig(out_fn, dpi=150, bbox_inches='tight')
     print(f"[{ft_hours:4d}h] 出力: {out_fn}")
     # plt.show()  # 画面表示する場合はコメントアウトを外す

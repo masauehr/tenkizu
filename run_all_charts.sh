@@ -111,8 +111,10 @@ run_gsm "GSM 鉛直断面図"             GSM_CrossSection.py
 run_gsm "GSM FAX57 500hPa気温"       GSM_fax57.py
 run_gsm "GSM FAX78 850hPa気温・風"   GSM_fax78.py
 run_gsm "GSM 地上気圧"               GSM_faxSrfPre.py
+run_gsm "GSM 850hPa 相当温位"        GSM_EPT850hPa.py
 
 # ECMWF系（ECMWF Open Dataからデータ取得）: start_ft は時間数（DDHHから変換済み）
+run_ecm "ECMWF 500hPa高度・渦度"     ECM_tenkizu500hPa.py
 run_ecm "ECMWF 850hPa 相当温位"      ECM_EPT850hPa.py
 run_ecm "ECMWF FAX57 500hPa気温"     ECM_Fax57.py
 run_ecm "ECMWF FAX78 700hPa収束"     ECM_Fax78.py
