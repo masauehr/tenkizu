@@ -33,6 +33,7 @@ KEY_FTS_H = [0, 12, 24, 36, 48]
 
 # 実行するECM系スクリプトとその説明
 ECM_SCRIPTS = [
+    ("ECM_tenkizu500hPa.py",   "ECMWF 500hPa高度・渦度"),
     ("ECM_EPT850hPa.py",       "ECMWF 850hPa 相当温位・風"),
     ("ECM_Fax57.py",           "ECMWF FAX57 500hPa気温・700hPa湿数"),
     ("ECM_Fax78.py",           "ECMWF FAX78 850hPa気温・風・700hPa発散"),
