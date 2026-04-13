@@ -38,6 +38,7 @@ GSM_SCRIPTS = [
     ("GSM_fax57.py",         "GSM FAX57 500hPa気温・700hPa湿数"),
     ("GSM_fax78.py",         "GSM FAX78 850hPa気温・風・700hPa発散"),
     ("GSM_faxSrfPre.py",     "GSM 地上気圧・風・2m気温"),
+    ("GSM_EPT850hPa.py",     "GSM 850hPa 相当温位・風"),
 ]
 
 
