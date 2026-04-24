@@ -1,3 +1,8 @@
+# 認証情報・機密ファイル
+.env
+*.key
+*.pem
+
 data_gsm/
 output/
 __pycache__/
