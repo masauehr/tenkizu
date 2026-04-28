@@ -128,6 +128,7 @@ tenkizu/
 ├── GSM_100hPa.py           # GSM 100hPa（任意気圧面）等高度線・ISOTAC・風矢羽
 ├── ECM_100hPa.py           # ECMWF 100hPa（任意気圧面）等高度線・ISOTAC・風矢羽
 ├── upper_wind_report.py   # 上層天気図レポート生成・GitHub push（upper_wind_report.md）
+├── jet_front_report.py    # ジェット・前線解析レポート生成・GitHub push（jet_front_report.md）
 ├── make_pptx.py            # PNG → PowerPoint 自動生成（GSM/ECM 主要7グループ）
 ├── make_pptx2.py           # PNG → PowerPoint 自動生成（残り3グループ）
 ├── run_all_charts.sh       # 全16スクリプト一括実行（--ecmでECM追加、デフォルトGSMのみ）
@@ -503,6 +504,7 @@ plt.close()
 | 2026-04-28 | `GSM_100hPa.py`・`ECM_100hPa.py` を追加（上層等高度線・ISOTAC・風矢羽、任意気圧面対応） |
 | 2026-04-28 | `upper_wind_report.py` を追加（複数気圧面・GitHub push・`upper_wind_report.md` 生成） |
 | 2026-04-28 | `run_all_charts.sh` に `--ecm` フラグ追加（デフォルトGSMのみ） |
+| 2026-04-28 | `jet_front_report.py` を追加（上層風・断面図・850hPa EPT・地上気圧の解析レポート） |
 
 ---
 

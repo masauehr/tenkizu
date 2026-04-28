@@ -1,0 +1,361 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# ジェット・前線解析レポート生成・GitHub アップロードスクリプト
+# 上層風（GSM_100hPa）・鉛直断面（GSM_CrossSection）・
+# 850hPa相当温位（GSM/ECM_EPT850hPa）・地上気圧（GSM_faxSrfPre / ECM_SurfacePressure）
+# を組み合わせ、reports/{INIT_TIME}/ に PNG+MD を配置して git push する
+#
+# 使用例:
+#   python jet_front_report.py 2026041200                    # GSMのみ FT=0h 1枚
+#   python jet_front_report.py 2026041200 0000 5             # GSMのみ 5枚
+#   python jet_front_report.py 2026041200 --ecm              # GSM+ECM FT=0h 1枚
+#   python jet_front_report.py 2026041200 --levels 100 50    # 上層風を100+50hPa
+#   python jet_front_report.py 2026041200 0000 5 --ecm --levels 100 50
+#   python jet_front_report.py 2026041200 --lat-s 45 --lat-e 25 --lon-s 125 --lon-e 135
+#
+# 作成: 20260428 上原政博
+
+import os
+import sys
+import subprocess
+import shutil
+import argparse
+from pathlib import Path
+from datetime import datetime
+
+
+def ddhh_to_hours(ddhh):
+    return (ddhh // 100) * 24 + (ddhh % 100)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='ジェット・前線解析レポートを生成してGitHubにアップロードする',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+使用例:
+  python jet_front_report.py 2026041200                         # GSMのみ FT=0h 1枚
+  python jet_front_report.py 2026041200 0000 5                  # GSMのみ 5枚
+  python jet_front_report.py 2026041200 --ecm                   # GSM+ECM FT=0h 1枚
+  python jet_front_report.py 2026041200 --levels 100 50         # 上層風を100+50hPa
+  python jet_front_report.py 2026041200 0000 5 --ecm --levels 100 50
+  python jet_front_report.py 2026041200 --lat-s 45 --lat-e 25 --lon-s 125 --lon-e 135
+        """
+    )
+    parser.add_argument('init_time', type=str, help='初期時刻 YYYYMMDDHH（UTC）')
+    parser.add_argument('start_ft',  type=str, nargs='?', default='0000',
+                        help='開始予報時間 DDHH形式（デフォルト: 0000）')
+    parser.add_argument('n_steps',   type=int, nargs='?', default=1,
+                        help='作成する枚数（6h間隔、デフォルト: 1）')
+    parser.add_argument('--levels',  type=int, nargs='+', default=[100],
+                        help='上層風の気圧面 hPa（複数指定可、デフォルト: 100）')
+    parser.add_argument('--ecm',     action='store_true',
+                        help='ECMWFも実行する（省略時はGSMのみ）')
+    # 鉛直断面の端点（GSM_CrossSection.py のデフォルトと合わせる）
+    parser.add_argument('--lat-s',   type=float, default=45,
+                        help='断面図 北端緯度（デフォルト: 45°N）')
+    parser.add_argument('--lat-e',   type=float, default=25,
+                        help='断面図 南端緯度（デフォルト: 25°N）')
+    parser.add_argument('--lon-s',   type=float, default=130,
+                        help='断面図 西端経度（デフォルト: 130°E）')
+    parser.add_argument('--lon-e',   type=float, default=130,
+                        help='断面図 東端経度（デフォルト: 130°E）')
+    return parser.parse_args()
+
+
+def run_python(script, script_dir):
+    cmd = (
+        "source $(conda info --base)/etc/profile.d/conda.sh && "
+        "conda activate met_env_310 && "
+        f"python {script}"
+    )
+    result = subprocess.run(cmd, shell=True, cwd=script_dir,
+                            text=True, executable='/bin/bash')
+    return result.returncode == 0
+
+
+def run_git(cmd, cwd):
+    print(f"$ git {cmd}")
+    result = subprocess.run(f"git {cmd}", shell=True, cwd=cwd,
+                            capture_output=True, text=True)
+    if result.stdout.strip():
+        print(result.stdout.strip())
+    if result.stderr.strip():
+        print(result.stderr.strip())
+    return result.returncode
+
+
+def copy_png(src, report_dir, label):
+    if src.exists():
+        dst = report_dir / src.name
+        shutil.copy2(src, dst)
+        print(f"  {src.name}")
+        return src.name
+    else:
+        print(f"  ※ 見つかりません: {src.name} ({label})")
+        return None
+
+
+def main():
+    args = parse_args()
+    init_str = args.init_time
+    if len(init_str) != 10:
+        print("エラー: init_time は YYYYMMDDHH の10桁で指定してください")
+        sys.exit(1)
+
+    i_year  = int(init_str[0:4])
+    i_month = int(init_str[4:6])
+    i_day   = int(init_str[6:8])
+    i_hourZ = int(init_str[8:10])
+
+    start_ddhh = int(args.start_ft)
+    n_steps    = args.n_steps
+    start_ft_h = ddhh_to_hours(start_ddhh)
+    levels     = args.levels
+    with_ecm   = args.ecm
+
+    script_dir = Path(__file__).parent.resolve()
+    output_dir = script_dir / "output"
+    report_dir = script_dir / "reports" / init_str
+    report_dir.mkdir(parents=True, exist_ok=True)
+
+    level_label = "+".join(f"{l}hPa" for l in levels)
+    model_label = "GSM+ECM" if with_ecm else "GSMのみ"
+
+    # 断面図の端点ラベル
+    cs_args = (f"--lat-s {args.lat_s} --lat-e {args.lat_e} "
+               f"--lon-s {args.lon_s} --lon-e {args.lon_e}")
+    if args.lon_s == args.lon_e:
+        cs_label = f"{args.lat_s:.0f}°N〜{args.lat_e:.0f}°N / {args.lon_s:.0f}°E（経線断面）"
+    else:
+        cs_label = (f"{args.lat_s:.0f}°N,{args.lon_s:.0f}°E〜"
+                    f"{args.lat_e:.0f}°N,{args.lon_e:.0f}°E")
+
+    print(f"{'='*60}")
+    print(f" ジェット・前線解析レポート [{model_label}] 上層風:{level_label}")
+    print(f" 初期時刻: {init_str} UTC  開始FT: {start_ft_h}h  枚数: {n_steps}")
+    print(f" 断面図: {cs_label}")
+    print(f"{'='*60}\n")
+
+    # ---- 上層風: 気圧面ごとに GSM / ECM を実行 ----
+    for lev in levels:
+        print(f"--- GSM {lev}hPa 上層風 ---")
+        ok = run_python(f"GSM_100hPa.py {init_str} {args.start_ft} {n_steps} {lev}", script_dir)
+        if not ok:
+            print(f"警告: GSM_100hPa.py (level={lev}) でエラーが発生しました")
+
+        if with_ecm:
+            print(f"\n--- ECM {lev}hPa 上層風 ---")
+            ok = run_python(f"ECM_100hPa.py {init_str} {start_ft_h} {n_steps} {lev}", script_dir)
+            if not ok:
+                print(f"警告: ECM_100hPa.py (level={lev}) でエラーが発生しました")
+        print()
+
+    # ---- 鉛直断面図: GSMのみ ----
+    print("--- GSM 鉛直断面図 ---")
+    ok = run_python(
+        f"GSM_CrossSection.py {init_str} {args.start_ft} {n_steps} {cs_args}",
+        script_dir
+    )
+    if not ok:
+        print("警告: GSM_CrossSection.py でエラーが発生しました")
+    print()
+
+    # ---- 850hPa 相当温位 ----
+    print("--- GSM 850hPa 相当温位 ---")
+    ok = run_python(f"GSM_EPT850hPa.py {init_str} {args.start_ft} {n_steps}", script_dir)
+    if not ok:
+        print("警告: GSM_EPT850hPa.py でエラーが発生しました")
+
+    if with_ecm:
+        print("\n--- ECM 850hPa 相当温位 ---")
+        ok = run_python(f"ECM_EPT850hPa.py {init_str} {start_ft_h} {n_steps}", script_dir)
+        if not ok:
+            print("警告: ECM_EPT850hPa.py でエラーが発生しました")
+    print()
+
+    # ---- 地上気圧 ----
+    print("--- GSM 地上気圧 ---")
+    ok = run_python(f"GSM_faxSrfPre.py {init_str} {args.start_ft} {n_steps}", script_dir)
+    if not ok:
+        print("警告: GSM_faxSrfPre.py でエラーが発生しました")
+
+    if with_ecm:
+        print("\n--- ECM 地上気圧 ---")
+        ok = run_python(f"ECM_SurfacePressure.py {init_str} {start_ft_h} {n_steps}", script_dir)
+        if not ok:
+            print("警告: ECM_SurfacePressure.py でエラーが発生しました")
+    print()
+
+    # ---- 生成PNG を reports/ にコピー ----
+    dt_str2 = f"{i_year:04d}{i_month:02d}{i_day:02d}{i_hourZ:02d}"
+    ft_list = [start_ft_h + i * 6 for i in range(n_steps)]
+
+    # 収集構造: section → ft_h → fname
+    collected = {
+        "upper_gsm":  {lev: {} for lev in levels},
+        "upper_ecm":  {lev: {} for lev in levels},
+        "cross":      {},
+        "ept_gsm":    {},
+        "ept_ecm":    {},
+        "srf_gsm":    {},
+        "srf_ecm":    {},
+    }
+
+    print(f"--- PNG を reports/{init_str}/ にコピー ---")
+    for ft_h in ft_list:
+        # 上層風
+        for lev in levels:
+            src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_{lev}hPa_Height_Wind.png"
+            fname = copy_png(src, report_dir, f"GSM {lev}hPa 上層風 FT={ft_h}h")
+            if fname:
+                collected["upper_gsm"][lev][ft_h] = fname
+
+            if with_ecm:
+                src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_ECM_{lev}hPa_Height_Wind.png"
+                fname = copy_png(src, report_dir, f"ECM {lev}hPa 上層風 FT={ft_h}h")
+                if fname:
+                    collected["upper_ecm"][lev][ft_h] = fname
+
+        # 鉛直断面
+        src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_CrossSection.png"
+        fname = copy_png(src, report_dir, f"断面図 FT={ft_h}h")
+        if fname:
+            collected["cross"][ft_h] = fname
+
+        # 850hPa EPT
+        src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_850hPa_EPT.png"
+        fname = copy_png(src, report_dir, f"GSM EPT850 FT={ft_h}h")
+        if fname:
+            collected["ept_gsm"][ft_h] = fname
+
+        if with_ecm:
+            src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_ECM_850hPa_EPT.png"
+            fname = copy_png(src, report_dir, f"ECM EPT850 FT={ft_h}h")
+            if fname:
+                collected["ept_ecm"][ft_h] = fname
+
+        # 地上気圧
+        src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_SurfacePressure.png"
+        fname = copy_png(src, report_dir, f"GSM 地上 FT={ft_h}h")
+        if fname:
+            collected["srf_gsm"][ft_h] = fname
+
+        if with_ecm:
+            src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_ECM_SurfacePressure.png"
+            fname = copy_png(src, report_dir, f"ECM 地上 FT={ft_h}h")
+            if fname:
+                collected["srf_ecm"][ft_h] = fname
+
+    any_copied = any([
+        any(collected["upper_gsm"][lev] for lev in levels),
+        collected["cross"],
+        collected["ept_gsm"],
+        collected["srf_gsm"],
+    ])
+    if not any_copied:
+        print("エラー: コピーするPNGがありません。処理を中断します。")
+        sys.exit(1)
+
+    # ---- Markdown レポート生成 ----
+    dt_obj     = datetime(i_year, i_month, i_day, i_hourZ)
+    dt_display = dt_obj.strftime("%Y/%m/%d %HUTC")
+
+    lines = [
+        "# ジェット・前線解析レポート",
+        "",
+        f"**初期時刻**: {dt_display}  **断面**: {cs_label}",
+        "",
+        "---",
+        "",
+    ]
+
+    # 上層風
+    lines += [f"## 上層風（{level_label}）", ""]
+    for lev in levels:
+        if collected["upper_gsm"][lev]:
+            lines += [f"### GSM {lev}hPa", ""]
+            for ft_h, fname in sorted(collected["upper_gsm"][lev].items()):
+                lines += [f"#### FT={ft_h}h", "", f"![GSM {lev}hPa FT={ft_h}h](./{fname})", ""]
+        if collected["upper_ecm"][lev]:
+            lines += [f"### ECMWF {lev}hPa", ""]
+            for ft_h, fname in sorted(collected["upper_ecm"][lev].items()):
+                lines += [f"#### FT={ft_h}h", "", f"![ECM {lev}hPa FT={ft_h}h](./{fname})", ""]
+    lines += ["---", ""]
+
+    # 鉛直断面
+    if collected["cross"]:
+        lines += [f"## 鉛直断面図（{cs_label}）", ""]
+        lines += ["*(GSM。ポテンシャル温位・相当温位・風・発散)*", ""]
+        for ft_h, fname in sorted(collected["cross"].items()):
+            lines += [f"### FT={ft_h}h", "", f"![断面図 FT={ft_h}h](./{fname})", ""]
+        lines += ["---", ""]
+
+    # 850hPa EPT
+    lines += ["## 850hPa 相当温位・風矢羽", ""]
+    if collected["ept_gsm"]:
+        lines += ["### GSM", ""]
+        for ft_h, fname in sorted(collected["ept_gsm"].items()):
+            lines += [f"#### FT={ft_h}h", "", f"![GSM EPT850 FT={ft_h}h](./{fname})", ""]
+    if collected["ept_ecm"]:
+        lines += ["### ECMWF", ""]
+        for ft_h, fname in sorted(collected["ept_ecm"].items()):
+            lines += [f"#### FT={ft_h}h", "", f"![ECM EPT850 FT={ft_h}h](./{fname})", ""]
+    lines += ["---", ""]
+
+    # 地上気圧
+    lines += ["## 地上気圧・10m風・2m気温", ""]
+    if collected["srf_gsm"]:
+        lines += ["### GSM", ""]
+        for ft_h, fname in sorted(collected["srf_gsm"].items()):
+            lines += [f"#### FT={ft_h}h", "", f"![GSM 地上 FT={ft_h}h](./{fname})", ""]
+    if collected["srf_ecm"]:
+        lines += ["### ECMWF", ""]
+        for ft_h, fname in sorted(collected["srf_ecm"].items()):
+            lines += [f"#### FT={ft_h}h", "", f"![ECM 地上 FT={ft_h}h](./{fname})", ""]
+    lines += ["---", ""]
+
+    md_path = report_dir / "jet_front_report.md"
+    md_path.write_text("\n".join(lines), encoding="utf-8")
+    print(f"\nMDファイル生成: reports/{init_str}/jet_front_report.md")
+
+    # ---- git add → commit → push ----
+    print("\n--- GitHub へアップロード ---")
+    rel_path = f"reports/{init_str}"
+
+    rc = run_git(f"add {rel_path}", script_dir)
+    if rc != 0:
+        print("エラー: git add 失敗")
+        sys.exit(1)
+
+    staged = subprocess.run("git diff --staged --quiet", shell=True, cwd=script_dir)
+    if staged.returncode == 0:
+        print("変更なし: 既にアップロード済みです（コミット・プッシュをスキップ）")
+    else:
+        commit_msg = f"report: ジェット・前線解析レポート追加 ({init_str})"
+        rc = run_git(f'commit -m "{commit_msg}"', script_dir)
+        if rc != 0:
+            print("エラー: git commit 失敗")
+            sys.exit(1)
+
+        run_git("config http.postBuffer 524288000", script_dir)
+
+        rc = run_git("push", script_dir)
+        if rc != 0:
+            print("push 失敗。30秒待ってリトライします...")
+            import time
+            time.sleep(30)
+            rc = run_git("push", script_dir)
+        if rc != 0:
+            print("エラー: git push 失敗（手動で 'git push' を実行してください）")
+            sys.exit(1)
+
+    print(f"\n{'='*60}")
+    print(f" 完了")
+    print(f" レポート: reports/{init_str}/jet_front_report.md")
+    print(f"{'='*60}")
+
+
+if __name__ == "__main__":
+    main()
