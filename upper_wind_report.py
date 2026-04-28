@@ -6,11 +6,11 @@
 # reports/{INIT_TIME}/ にPNG+MDを配置して git push する
 #
 # 使用例:
-#   python make_100hpa_report.py 2026041200                        # 100hPa GSMのみ FT=0h 1枚
-#   python make_100hpa_report.py 2026041200 0000 5                 # 100hPa GSMのみ 5枚
-#   python make_100hpa_report.py 2026041200 --ecm                  # 100hPa GSM+ECM FT=0h 1枚
-#   python make_100hpa_report.py 2026041200 --levels 100 50        # 100+50hPa GSMのみ FT=0h
-#   python make_100hpa_report.py 2026041200 0000 5 --levels 100 50 --ecm  # 複数面・複数FT・GSM+ECM
+#   python upper_wind_report.py 2026041200                        # 100hPa GSMのみ FT=0h 1枚
+#   python upper_wind_report.py 2026041200 0000 5                 # 100hPa GSMのみ 5枚
+#   python upper_wind_report.py 2026041200 --ecm                  # 100hPa GSM+ECM FT=0h 1枚
+#   python upper_wind_report.py 2026041200 --levels 100 50        # 100+50hPa GSMのみ FT=0h
+#   python upper_wind_report.py 2026041200 0000 5 --levels 100 50 --ecm  # 複数面・複数FT・GSM+ECM
 #
 # 作成: 20260428 上原政博
 
@@ -33,11 +33,11 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 使用例:
-  python make_100hpa_report.py 2026041200                          # 100hPa GSMのみ FT=0h 1枚
-  python make_100hpa_report.py 2026041200 0000 5                   # 100hPa GSMのみ 5枚
-  python make_100hpa_report.py 2026041200 --ecm                    # 100hPa GSM+ECM FT=0h 1枚
-  python make_100hpa_report.py 2026041200 --levels 100 50          # 100+50hPa GSMのみ FT=0h
-  python make_100hpa_report.py 2026041200 0000 5 --levels 100 50 --ecm  # 複数面・GSM+ECM 5枚
+  python upper_wind_report.py 2026041200                          # 100hPa GSMのみ FT=0h 1枚
+  python upper_wind_report.py 2026041200 0000 5                   # 100hPa GSMのみ 5枚
+  python upper_wind_report.py 2026041200 --ecm                    # 100hPa GSM+ECM FT=0h 1枚
+  python upper_wind_report.py 2026041200 --levels 100 50          # 100+50hPa GSMのみ FT=0h
+  python upper_wind_report.py 2026041200 0000 5 --levels 100 50 --ecm  # 複数面・GSM+ECM 5枚
         """
     )
     parser.add_argument('init_time',  type=str, help='初期時刻 YYYYMMDDHH（UTC）')

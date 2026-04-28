@@ -127,7 +127,7 @@ tenkizu/
 ├── ECM_SurfacePressure.py  # ECMWF 地上気圧（±可降水量/積算降水量）
 ├── GSM_100hPa.py           # GSM 100hPa（任意気圧面）等高度線・ISOTAC・風矢羽
 ├── ECM_100hPa.py           # ECMWF 100hPa（任意気圧面）等高度線・ISOTAC・風矢羽
-├── make_100hpa_report.py   # 上層天気図レポート生成・GitHub push（upper_wind_report.md）
+├── upper_wind_report.py   # 上層天気図レポート生成・GitHub push（upper_wind_report.md）
 ├── make_pptx.py            # PNG → PowerPoint 自動生成（GSM/ECM 主要7グループ）
 ├── make_pptx2.py           # PNG → PowerPoint 自動生成（残り3グループ）
 ├── run_all_charts.sh       # 全16スクリプト一括実行（--ecmでECM追加、デフォルトGSMのみ）
@@ -312,6 +312,84 @@ python download_gsm.py --date 20171210 --ft 0000 0012 0100
 
 ---
 
+## 上層天気図レポート生成（upper_wind_report.py）
+
+指定した気圧面の上層天気図（GSM・必要に応じてECMWF）を生成し、  
+`reports/{init_str}/` に PNG と Markdown レポートをまとめて GitHub へ push するスクリプト。
+
+### 処理の流れ
+
+1. `GSM_100hPa.py` を呼び出して指定気圧面の天気図を生成（`output/` に PNG 出力）
+2. `--ecm` 指定時は `ECM_100hPa.py` も実行
+3. 生成された PNG を `reports/{init_str}/` にコピー
+4. 気圧面→モデル→FT の階層構造で `upper_wind_report.md` を生成
+5. `git add → commit → push` で GitHub に自動アップロード
+   - 同一 `init_str` で再実行した場合、変更がなければコミット・プッシュをスキップ
+
+### 引数
+
+```bash
+python upper_wind_report.py INIT_TIME [start_ft] [n_steps] [--levels レベル...] [--ecm]
+```
+
+| 引数 | 形式 | デフォルト | 説明 |
+|---|---|---|---|
+| `INIT_TIME` | YYYYMMDDHH | 必須 | 初期時刻（UTC） |
+| `start_ft` | DDHH | `0000` | 開始予報時間（GSMのDDHH形式） |
+| `n_steps` | 整数 | `1` | 作成枚数（6h間隔） |
+| `--levels` | 整数 複数可 | `100` | 気圧面 hPa（複数指定可） |
+| `--ecm` | フラグ | なし | ECMWFも実行（省略時はGSMのみ） |
+
+### 使用例
+
+```bash
+# 100hPa GSMのみ FT=0h 1枚
+python upper_wind_report.py 2026041200
+
+# 100hPa GSMのみ FT=0,6,12,18,24h 5枚
+python upper_wind_report.py 2026041200 0000 5
+
+# 100hPa GSM+ECM FT=0h
+python upper_wind_report.py 2026041200 --ecm
+
+# 100hPa + 50hPa GSMのみ FT=0h
+python upper_wind_report.py 2026041200 --levels 100 50
+
+# 100hPa + 50hPa GSM+ECM FT=0,6,12,18,24h 5枚
+python upper_wind_report.py 2026041200 0000 5 --levels 100 50 --ecm
+```
+
+> `--levels` を使う場合、`start_ft` と `n_steps` を省略するとデフォルト値（`0000` / `1`）が使われる。  
+> `start_ft` だけ指定したい場合は `n_steps` も明示する。
+
+### 生成物
+
+```
+reports/
+└── {init_str}/
+    ├── upper_wind_report.md          # MDレポート（GitHub で閲覧可）
+    ├── {dt}_FT{FFF}h_GSM_{lev}hPa_Height_Wind.png
+    └── {dt}_FT{FFF}h_ECM_{lev}hPa_Height_Wind.png  # --ecm 時のみ
+```
+
+**`upper_wind_report.md` の構造:**
+
+```markdown
+# 上層天気図レポート (100hPa+50hPa)
+**初期時刻**: 2026/04/27 12UTC
+---
+## 100hPa 高度・風矢羽
+### GSM 100hPa
+#### FT=0h
+![](./2026042712_FT000h_GSM_100hPa_Height_Wind.png)
+### ECMWF 100hPa  ← --ecm 時のみ
+...
+## 50hPa 高度・風矢羽  ← --levels 100 50 指定時
+...
+```
+
+---
+
 ## 出力ファイル
 
 ```
@@ -423,7 +501,7 @@ plt.close()
 | 2026-04-13 | `make_pptx.py`・`make_pptx2.py` を追加（PNG → PowerPoint 自動生成） |
 | 2026-04-13 | `samples/` ディレクトリを追加（全種別サンプル画像を GitHub にアップロード） |
 | 2026-04-28 | `GSM_100hPa.py`・`ECM_100hPa.py` を追加（上層等高度線・ISOTAC・風矢羽、任意気圧面対応） |
-| 2026-04-28 | `make_100hpa_report.py` を追加（複数気圧面・GitHub push・`upper_wind_report.md` 生成） |
+| 2026-04-28 | `upper_wind_report.py` を追加（複数気圧面・GitHub push・`upper_wind_report.md` 生成） |
 | 2026-04-28 | `run_all_charts.sh` に `--ecm` フラグ追加（デフォルトGSMのみ） |
 
 ---
