@@ -1,6 +1,16 @@
-# 上層天気図レポート (300hPa+200hPa+100hPa+50hPa)
+# 上層天気図レポート (500hPa+300hPa+200hPa+100hPa+50hPa)
 
 **初期時刻**: 2026/04/27 12UTC
+
+---
+
+## 500hPa 高度・風矢羽
+
+### GSM 500hPa
+
+#### FT=0h
+
+![GSM 500hPa FT=0h](./2026042712_FT000h_GSM_500hPa_Height_Wind.png)
 
 ---
 
