@@ -8,21 +8,21 @@
 
 ### GSM 300hPa
 
-#### FT=48h
+#### FT=60h
 
-![GSM 300hPa FT=48h](./2026042800_FT048h_GSM_300hPa_Height_Wind.png)
+![GSM 300hPa FT=60h](./2026042800_FT060h_GSM_300hPa_Height_Wind.png)
 
 ### GSM 200hPa
 
-#### FT=48h
+#### FT=60h
 
-![GSM 200hPa FT=48h](./2026042800_FT048h_GSM_200hPa_Height_Wind.png)
+![GSM 200hPa FT=60h](./2026042800_FT060h_GSM_200hPa_Height_Wind.png)
 
 ### GSM 100hPa
 
-#### FT=48h
+#### FT=60h
 
-![GSM 100hPa FT=48h](./2026042800_FT048h_GSM_100hPa_Height_Wind.png)
+![GSM 100hPa FT=60h](./2026042800_FT060h_GSM_100hPa_Height_Wind.png)
 
 ---
 
@@ -30,9 +30,9 @@
 
 *(GSM。ポテンシャル温位・相当温位・風・発散)*
 
-### FT=48h
+### FT=60h
 
-![断面図 FT=48h](./2026042800_FT048h_CrossSection.png)
+![断面図 FT=60h](./2026042800_FT060h_CrossSection.png)
 
 ---
 
@@ -40,9 +40,9 @@
 
 ### GSM
 
-#### FT=48h
+#### FT=60h
 
-![GSM EPT850 FT=48h](./2026042800_FT048h_GSM_850hPa_EPT.png)
+![GSM EPT850 FT=60h](./2026042800_FT060h_GSM_850hPa_EPT.png)
 
 ---
 
@@ -50,8 +50,8 @@
 
 ### GSM
 
-#### FT=48h
+#### FT=60h
 
-![GSM 地上 FT=48h](./2026042800_FT048h_GSM_SurfacePressure.png)
+![GSM 地上 FT=60h](./2026042800_FT060h_GSM_SurfacePressure.png)
 
 ---
