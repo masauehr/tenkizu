@@ -192,9 +192,9 @@ def main():
 
         lines += ["---", ""]
 
-    md_path = report_dir / "report.md"
+    md_path = report_dir / "upper_wind_report.md"
     md_path.write_text("\n".join(lines), encoding="utf-8")
-    print(f"\nMDファイル生成: reports/{init_str}/report.md")
+    print(f"\nMDファイル生成: reports/{init_str}/upper_wind_report.md")
 
     # ---- git add → commit → push ----
     print("\n--- GitHub へアップロード ---")
@@ -231,7 +231,7 @@ def main():
 
     print(f"\n{'='*55}")
     print(f" 完了")
-    print(f" レポート: reports/{init_str}/report.md")
+    print(f" レポート: reports/{init_str}/upper_wind_report.md")
     print(f"{'='*55}")
 
 
