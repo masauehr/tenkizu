@@ -2,7 +2,7 @@
 # 全天気図を一括生成するスクリプト
 # 引数順は個別Pythonスクリプトと統一: INIT_TIME [START_FT [N_STEPS]]
 #
-# 使用法: bash run_all_charts.sh YYYYMMDDHH [START_FT_DDHH [N_STEPS]]
+# 使用法: bash run_all_charts.sh YYYYMMDDHH [START_FT_DDHH [N_STEPS|key]] [--ecm]
 #
 # 引数説明:
 #   INIT_TIME   : 初期時刻 YYYYMMDDHH（必須）
@@ -10,22 +10,36 @@
 #                 例: 0000=FT0h, 0006=FT6h, 0100=FT24h, 0112=FT36h
 #   N_STEPS     : 作成する枚数（省略時: 1）6h間隔
 #                 "key" を指定すると FT=0,12,24,36,48h の5枚を生成（START_FTは無視）
+#   --ecm       : ECMWFも実行する（省略時はGSMのみ）
 #
 # 例:
-#   bash run_all_charts.sh 2023052312              # FT=0h 各1枚
-#   bash run_all_charts.sh 2023052312 0000 5       # FT=0,6,12,18,24h 各5枚
-#   bash run_all_charts.sh 2023052312 0100 3       # FT=24,30,36h 各3枚
-#   bash run_all_charts.sh 2023052312 0000 key     # FT=0,12,24,36,48h 各5枚（keyモード）
+#   bash run_all_charts.sh 2023052312              # FT=0h GSMのみ1枚
+#   bash run_all_charts.sh 2023052312 0000 5       # FT=0,6,12,18,24h GSMのみ5枚
+#   bash run_all_charts.sh 2023052312 0100 3       # FT=24,30,36h GSMのみ3枚
+#   bash run_all_charts.sh 2023052312 0000 key     # FT=0,12,24,36,48h GSMのみ（keyモード）
+#   bash run_all_charts.sh 2023052312 0000 5 --ecm # FT=0,6,12,18,24h GSM+ECM5枚
 
 set -e
 
-INIT_TIME="$1"
-START_FT_DDHH="${2:-0000}"   # 開始予報時間（DDHH形式）
-N_STEPS="${3:-1}"            # 作成枚数、または "key"
+# --ecm フラグと位置引数を分離
+WITH_ECM=false
+POSITIONAL=()
+
+for arg in "$@"; do
+    if [ "$arg" = "--ecm" ]; then
+        WITH_ECM=true
+    else
+        POSITIONAL+=("$arg")
+    fi
+done
+
+INIT_TIME="${POSITIONAL[0]:-}"
+START_FT_DDHH="${POSITIONAL[1]:-0000}"   # 開始予報時間（DDHH形式）
+N_STEPS="${POSITIONAL[2]:-1}"            # 作成枚数、または "key"
 
 if [ -z "$INIT_TIME" ]; then
     echo "エラー: 初期時刻を指定してください"
-    echo "使用法: $0 YYYYMMDDHH [START_FT_DDHH [N_STEPS|key]]"
+    echo "使用法: $0 YYYYMMDDHH [START_FT_DDHH [N_STEPS|key]] [--ecm]"
     exit 1
 fi
 
@@ -57,14 +71,19 @@ cd "$SCRIPT_DIR"
 source "$(conda info --base)/etc/profile.d/conda.sh" 2>/dev/null || true
 conda activate met_env_310 2>/dev/null || true
 
+ECM_LABEL=""
+if [ "$WITH_ECM" = true ]; then
+    ECM_LABEL=" +ECM"
+fi
+
 if [ "$KEY_MODE" = true ]; then
     echo "=============================="
-    echo "初期時刻: $INIT_TIME  モード: key（FT=0,12,24,36,48h）"
+    echo "初期時刻: $INIT_TIME  モード: key（FT=0,12,24,36,48h）${ECM_LABEL}"
     echo "出力先: $SCRIPT_DIR/output/"
     echo "=============================="
 else
     echo "=============================="
-    echo "初期時刻: $INIT_TIME  開始FT: $START_FT_DDHH (FT=${START_FT_H}h)  枚数: $N_STEPS"
+    echo "初期時刻: $INIT_TIME  開始FT: $START_FT_DDHH (FT=${START_FT_H}h)  枚数: $N_STEPS${ECM_LABEL}"
     echo "出力先: $SCRIPT_DIR/output/"
     echo "=============================="
 fi
@@ -90,6 +109,9 @@ run_gsm() {
 run_ecm() {
     local name="$1"
     local script="$2"
+    if [ "$WITH_ECM" = false ]; then
+        return 0
+    fi
     echo "---------- $name ----------"
     if [ "$KEY_MODE" = true ]; then
         for ft in "${KEY_FTS_H[@]}"; do
@@ -113,12 +135,16 @@ run_gsm "GSM FAX78 850hPa気温・風"   GSM_fax78.py
 run_gsm "GSM 地上気圧"               GSM_faxSrfPre.py
 run_gsm "GSM 850hPa 相当温位"        GSM_EPT850hPa.py
 
-# ECMWF系（ECMWF Open Dataからデータ取得）: start_ft は時間数（DDHHから変換済み）
+# ECMWF系（ECMWF Open Dataからデータ取得）: --ecm 指定時のみ実行
 run_ecm "ECMWF 500hPa高度・渦度"     ECM_tenkizu500hPa.py
 run_ecm "ECMWF 850hPa 相当温位"      ECM_EPT850hPa.py
 run_ecm "ECMWF FAX57 500hPa気温"     ECM_Fax57.py
 run_ecm "ECMWF FAX78 700hPa収束"     ECM_Fax78.py
 run_ecm "ECMWF 地上気圧"             ECM_SurfacePressure.py
+
+# 100hPa 高度・風矢羽（GSM常時、ECMは --ecm 指定時のみ）
+run_gsm "GSM 100hPa高度・風矢羽"     GSM_100hPa.py
+run_ecm "ECMWF 100hPa高度・風矢羽"   ECM_100hPa.py
 
 echo "=============================="
 echo "全処理完了"
