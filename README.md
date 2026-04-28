@@ -8,6 +8,7 @@ GSM（全球スペクトルモデル）や ECMWF GRIB2 データから各種高�
 ## 概要
 
 - **対応データ**: 気象庁 GSM（全球モデル）・ECMWF（欧州中期予報センターモデル）
+- **スクリプト数**: 描画スクリプト 16 種類（GSM 11本・ECM 6本）
 - **図法**: ステレオ投影（中心: 60°N, 140°E）
 - **描画領域**: 108〜156°E, 17〜55°N（極東域）
 - **出力形式**: PNG（DPI 150, 10×8 インチ）
@@ -124,15 +125,19 @@ tenkizu/
 ├── ECM_Fax57.py            # ECMWF FAX57（500hPa気温・700hPa湿数）
 ├── ECM_Fax78.py            # ECMWF FAX78（850hPa気温・風・700hPa発散）
 ├── ECM_SurfacePressure.py  # ECMWF 地上気圧（±可降水量/積算降水量）
+├── GSM_100hPa.py           # GSM 100hPa（任意気圧面）等高度線・ISOTAC・風矢羽
+├── ECM_100hPa.py           # ECMWF 100hPa（任意気圧面）等高度線・ISOTAC・風矢羽
+├── make_100hpa_report.py   # 上層天気図レポート生成・GitHub push（upper_wind_report.md）
 ├── make_pptx.py            # PNG → PowerPoint 自動生成（GSM/ECM 主要7グループ）
 ├── make_pptx2.py           # PNG → PowerPoint 自動生成（残り3グループ）
-├── run_all_charts.sh       # 全14スクリプト一括実行
+├── run_all_charts.sh       # 全16スクリプト一括実行（--ecmでECM追加、デフォルトGSMのみ）
 ├── run_gsm_auto.py         # GSM系：最新データ自動検索・一括生成
 ├── run_ecm_auto.py         # ECM系：最新データ自動検索・一括生成
 ├── kurora_tenkizu.py       # 旧メイン版（互換維持）
 ├── download_gsm.py         # GSM GRIB2事前ダウンロード専用
 ├── run_pipeline.sh         # ダウンロード→旧メイン版 パイプライン
 ├── samples/                # 各種別サンプルPNG（GitHub閲覧用）
+├── reports/                # 上層天気図レポート保存先（reports/{init_str}/upper_wind_report.md）
 ├── data_gsm/               # GSM GRIB2データ格納先（Gitから除外）
 ├── data/ecm/               # ECMWF GRIB2データ格納先（Gitから除外）
 └── output/                 # 生成天気図PNG出力先（Gitから除外）
@@ -329,6 +334,8 @@ output/{YYYYMMDDHH}_FT{FFF}h_{種別}.png
 | `ECM_Fax57.py` | `2026041200_FT000h_ECM_Fax57.png` |
 | `ECM_Fax78.py` | `2026041200_FT000h_ECM_Fax78.png` |
 | `ECM_SurfacePressure.py` | `2026041200_FT000h_ECM_SurfacePressure.png` |
+| `GSM_100hPa.py` | `2026041200_FT000h_GSM_100hPa_Height_Wind.png` |
+| `ECM_100hPa.py` | `2026041200_FT000h_ECM_100hPa_Height_Wind.png` |
 
 ---
 
@@ -415,6 +422,9 @@ plt.close()
 | 2026-04-13 | GSM/ECM ファイル名衝突を解消（`GSM_`/`ECM_` プレフィックスを各出力名に付与） |
 | 2026-04-13 | `make_pptx.py`・`make_pptx2.py` を追加（PNG → PowerPoint 自動生成） |
 | 2026-04-13 | `samples/` ディレクトリを追加（全種別サンプル画像を GitHub にアップロード） |
+| 2026-04-28 | `GSM_100hPa.py`・`ECM_100hPa.py` を追加（上層等高度線・ISOTAC・風矢羽、任意気圧面対応） |
+| 2026-04-28 | `make_100hpa_report.py` を追加（複数気圧面・GitHub push・`upper_wind_report.md` 生成） |
+| 2026-04-28 | `run_all_charts.sh` に `--ecm` フラグ追加（デフォルトGSMのみ） |
 
 ---
 
