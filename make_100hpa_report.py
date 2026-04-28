@@ -192,23 +192,29 @@ def main():
         print("エラー: git add 失敗")
         sys.exit(1)
 
-    commit_msg = f"report: 100hPa天気図レポート追加 ({init_str})"
-    rc = run_git(f'commit -m "{commit_msg}"', script_dir)
-    if rc != 0:
-        print("エラー: git commit 失敗（変更がない可能性があります）")
+    # ステージングに差分があるか確認（なければコミット不要）
+    staged = subprocess.run("git diff --staged --quiet", shell=True, cwd=script_dir)
+    if staged.returncode == 0:
+        print("変更なし: 既にアップロード済みです（コミット・プッシュをスキップ）")
+    else:
+        commit_msg = f"report: 100hPa天気図レポート追加 ({init_str})"
+        rc = run_git(f'commit -m "{commit_msg}"', script_dir)
+        if rc != 0:
+            print("エラー: git commit 失敗")
+            sys.exit(1)
 
-    # PNG が大きいため postBuffer を 500MB に拡張してからプッシュ
-    run_git("config http.postBuffer 524288000", script_dir)
+        # PNG が大きいため postBuffer を 500MB に拡張してからプッシュ
+        run_git("config http.postBuffer 524288000", script_dir)
 
-    rc = run_git("push", script_dir)
-    if rc != 0:
-        print("push 失敗。30秒待ってリトライします...")
-        import time
-        time.sleep(30)
         rc = run_git("push", script_dir)
-    if rc != 0:
-        print("エラー: git push 失敗（手動で 'git push' を実行してください）")
-        sys.exit(1)
+        if rc != 0:
+            print("push 失敗。30秒待ってリトライします...")
+            import time
+            time.sleep(30)
+            rc = run_git("push", script_dir)
+        if rc != 0:
+            print("エラー: git push 失敗（手動で 'git push' を実行してください）")
+            sys.exit(1)
 
     print(f"\n{'='*55}")
     print(f" 完了")
