@@ -4,7 +4,13 @@
 
 ---
 
-## 上層風（100hPa+200hPa+300hPa）
+## 上層風（50hPa+100hPa+200hPa）
+
+### GSM 50hPa
+
+#### FT=0h
+
+![GSM 50hPa FT=0h](./2025050500_FT000h_GSM_50hPa_Height_Wind.png)
 
 ### GSM 100hPa
 
@@ -17,12 +23,6 @@
 #### FT=0h
 
 ![GSM 200hPa FT=0h](./2025050500_FT000h_GSM_200hPa_Height_Wind.png)
-
-### GSM 300hPa
-
-#### FT=0h
-
-![GSM 300hPa FT=0h](./2025050500_FT000h_GSM_300hPa_Height_Wind.png)
 
 ---
 
