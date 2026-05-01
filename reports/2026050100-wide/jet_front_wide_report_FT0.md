@@ -2,7 +2,7 @@
 
 **初期時刻**: 2026/05/01 00UTC
 
-*(描画領域: 上層 lonW=48 lonE=192 latS=-11.5 latN=45.5、850hPa lonW=97 lonE=169 latS=-2.5 latN=42.5)*
+*(描画領域: 上層 lonW=60 lonE=180 latS=-15 latN=40、850hPa lonW=97 lonE=169 latS=-2.5 latN=42.5)*
 
 ---
 
