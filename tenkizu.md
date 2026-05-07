@@ -560,6 +560,154 @@ python jet_front_ave_report.py 2026050600 5 --push  # 5日平均・生成後 Git
 
 ---
 
+## 平均化処理のコード解説
+
+### 2種類の平均化モード
+
+| モード | 対象スクリプト | 平均の軸 | データ種別 |
+|--------|-------------|---------|----------|
+| 予報時間軸平均（`--avg_steps N`） | `GSM/ECM_100hPa.py`・`GSM/ECM_EPT850hPa.py` | 同一 init_time の N 個の FT（6h 間隔） | 予報値（FT ≥ 0） |
+| 時間軸平均（`n_days`） | `jet_front_ave_report.py` | 異なる init_time の FT=0h（12h 間隔） | 解析値（FT = 0h のみ） |
+
+---
+
+### 予報時間軸平均（`--avg_steps N`）
+
+各描画スクリプトの `plot_avg(batch_start_h, avg_steps, ...)` 関数で実装されている。
+
+**① FTリスト生成**
+
+```python
+ft_list = [batch_start_h + i * 6 for i in range(avg_steps)]
+# 例: batch_start_h=0, avg_steps=4 → [0, 6, 12, 18]
+```
+
+**② 各FTのGRIB2を読み込んでリストに積む**
+
+```python
+for ft_h in ft_list:
+    # GRIB2 から gh / u / v を読み込む
+    valHt_all.append(_valHt)
+    valWu_all.append(_valWu)
+    valWv_all.append(_valWv)
+```
+
+**③ axis=0 方向（FT軸）で算術平均**
+
+```python
+valHt = np.mean(valHt_all, axis=0)
+valWu = np.mean(valWu_all, axis=0)
+valWv = np.mean(valWv_all, axis=0)
+```
+
+**④ 複数バッチ（`n_steps > 1`）の場合**
+
+`main()` 側でバッチ番号 `step_i` をインクリメントして呼び出す。バッチ開始 FT は `avg_steps` 分ずつずれ、バッチ間に重複はない。
+
+```python
+for step_i in range(args.n_steps):
+    batch_start_h = start_ft_h + step_i * (6 * avg_steps)
+    plot_avg(..., batch_start_h, avg_steps, ...)
+# 例: start_ft=0, avg_steps=4, n_steps=3
+#   step_i=0 → batch_start=0  (FT 0, 6, 12, 18h)
+#   step_i=1 → batch_start=24 (FT 24, 30, 36, 42h)
+#   step_i=2 → batch_start=48 (FT 48, 54, 60, 66h)
+```
+
+`jet_front_wide_report.py` はサブプロセス経由で `--avg_steps N` を透過的に各描画スクリプトに渡す。
+
+```python
+avg_arg = f"--avg_steps {avg_steps}" if avg_steps > 1 else ""
+run_python(f"GSM_100hPa.py {init_str} {start_ft} {n_steps} {lev} {area_arg} {avg_arg}", ...)
+```
+
+---
+
+### ECM版の平滑化タイミング
+
+ECM の格子間隔（0.25°）は GSM（0.125°）より粗く天気図がざらつくため、各ファイル読み込み直後に `scipy.ndimage.uniform_filter(size=3)`（3×3 格子平均）を適用してから、平均処理のリストに積む。
+
+```python
+# ECM_100hPa.py / ECM_EPT850hPa.py の plot_avg 内
+_valHt = uniform_filter(_valHt, size=3)   # 平均前に平滑化
+_valWu = uniform_filter(_valWu, size=3)
+_valWv = uniform_filter(_valWv, size=3)
+
+valHt_all.append(_valHt)                  # 平滑済みデータを積む
+```
+
+**平均後ではなく各ファイル読み込み直後に適用**することで、各 FT の格子スケールノイズが平均値に影響しないようにしている。`plot_one`（通常1枚描画）でも同じ位置で適用されており、処理の一貫性がある。
+
+---
+
+### EPT の平均化（物理的に正しい手順）
+
+相当温位（EPT）は気温（T）と相対湿度（RH）の**非線形関数**である。そのため「各FTの EPT を先に計算してから平均する」と、平均場の EPT が過大・過小評価されやすい。  
+実装では「**T と RH を先に平均してから EPT を計算**」する手順を採用している。
+
+```python
+# GSM_EPT850hPa.py / ECM_EPT850hPa.py の plot_avg 内
+
+# ❶ 各FTから T, RH, u, v の生データを収集
+for ft_h in ft_list:
+    ...
+    valTm_all.append(_valTm)   # 気温 [K]
+    valRh_all.append(_valRh)   # 相対湿度 [%]
+
+# ❷ T と RH を算術平均（EPT 計算の前）
+valTm = np.mean(valTm_all, axis=0)
+valRh = np.mean(valRh_all, axis=0)
+
+# ❸ 平均済み T, RH から MetPy で露点温度 → EPT を計算
+dsp['dewpoint_temperature'] = mpcalc.dewpoint_from_relative_humidity(
+    dsp['Temperature'], dsp['RelativHumidity'])
+dsp['Equivalent_Potential_temperature'] = mpcalc.equivalent_potential_temperature(
+    dsp['level'], dsp['Temperature'], dsp['dewpoint_temperature'])
+```
+
+---
+
+### 時間軸平均（`jet_front_ave_report.py`）
+
+**① 初期時刻リスト生成**
+
+```python
+def build_init_times(newest_dt, n_days):
+    n_steps = n_days * 2           # 1日 = 12h×2個
+    return [newest_dt - timedelta(hours=i * 12) for i in range(n_steps)]
+# 例: newest_dt=2026050600, n_days=3 → 6個（新しい順）
+#   [050600, 050512, 050500, 050412, 050400, 050312]
+```
+
+**② 各 init_time の FT=0h ファイルだけを読み込む**
+
+```python
+def plot_gsm_100hpa_avg(init_times, ...):
+    for dt in init_times:
+        # FD0000 固定（FT=0h のみ）
+        gr_fn = f"Z__C_RJTD_{dt.strftime('%Y%m%d%H')}0000_GSM_GPV_Rgl_FD0000_grib2.bin"
+        # 読み込み → リストに追加
+        valHt_all.append(_valHt)
+        ...
+
+    valHt = np.mean(valHt_all, axis=0)   # init_time 方向の算術平均
+```
+
+`--avg_steps` との本質的な違いは **FD0000（FT=0h）だけを使う**点にある。
+
+**③ タイトルへの期間表示**
+
+```python
+period_str = f"{init_times[-1].strftime('%Y%m%d%H')}〜{init_times[0].strftime('%Y%m%d%H')}UTC"
+# 例: "2026050312〜2026050600UTC"
+
+f"GSM {n_days}day avg (FT=0h×{len(init_times)}) {period_str} {tagHp}hPa ..."
+```
+
+平均に使った初期時刻の範囲を図のタイトルに明示し、どの期間の平均場かを一目でわかるようにしている。
+
+---
+
 ## 総観天気図レポート生成（synop_report.py）
 
 Jet300hPa・Fax57（500/700hPa）・Fax78（700/850hPa）・850hPa相当温位・地上気圧を組み合わせ、  
