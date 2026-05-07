@@ -113,10 +113,15 @@ def parse_args():
     parser.add_argument('start_ft',  type=int, nargs='?', default=0, help='開始予報時間（時間数）例: 0, 12, 24')
     parser.add_argument('n_steps',   type=int, nargs='?', default=1, help='作成する枚数（6h間隔）')
     parser.add_argument('level',     type=int, nargs='?', default=850, help='気圧面 hPa（デフォルト: 850）')
+    parser.add_argument('--area',    type=float, nargs=4, default=None,
+                        metavar=('LON_W', 'LON_E', 'LAT_S', 'LAT_N'),
+                        help='描画範囲 lonW lonE latS latN（デフォルト: 115 151 20 50）')
+    parser.add_argument('--avg_steps', type=int, default=1,
+                        help='平均するFT個数（1=平均なし、n指定時は6h間隔でn個を平均して1枚、デフォルト: 1）')
     return parser.parse_args()
 
 
-def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir):
+def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=None):
     # ECMWFファイル名を構築
     if i_hourZ in (0, 12):
         ecm_fn = f"{i_year:04d}{i_month:02d}{i_day:02d}{i_hourZ:02d}0000-{ft_hours:d}h-oper-fc.grib2"
@@ -192,7 +197,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir):
     levels_ept0i = np.arange(270, 390,  3)
     levels_ept1  = np.arange(270, 390, 15)
     levels_eptf  = np.arange(270, 360,  3)
-    i_area = [115, 151, 20, 50]
+    i_area = area if area is not None else [115, 151, 20, 50]
 
     states_provinces = cfeature.NaturalEarthFeature(
         category='cultural', name='admin_1_states_provinces_lines', scale='50m', facecolor='none')
@@ -251,6 +256,162 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir):
     return True
 
 
+def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, output_dir, area=None):
+    """avg_steps個のFT（6h間隔）の生データを平均してEPTを計算し1枚の天気図を生成する"""
+    ft_list = [batch_start_h + i * 6 for i in range(avg_steps)]
+    batch_end_h = ft_list[-1]
+
+    valHt_all, valWu_all, valWv_all, valTm_all, valRh_all = [], [], [], [], []
+    lat = lon = None
+    dt_str = dt_str2 = None
+    dt_i = None
+
+    for ft_h in ft_list:
+        if i_hourZ in (0, 12):
+            ecm_fn = f"{i_year:04d}{i_month:02d}{i_day:02d}{i_hourZ:02d}0000-{ft_h:d}h-oper-fc.grib2"
+        else:
+            ecm_fn = f"{i_year:04d}{i_month:02d}{i_day:02d}{i_hourZ:02d}0000-{ft_h:d}h-scda-fc.grib2"
+        ecm_path = f"{DATA_DIR}/{ecm_fn}"
+
+        if not ensure_file_ecm(ecm_path, ecm_fn, i_year, i_month, i_day, i_hourZ):
+            print(f"  スキップ: FT={ft_h}h（データ取得失敗）")
+            return False
+
+        print(f"  [{ft_h:4d}h] データ読み込み: {ecm_fn}")
+        grbs  = pygrib.open(ecm_path)
+        grbHt = grbs(shortName="gh", typeOfLevel='isobaricInhPa', level=tagHp)[0]
+        grbWu = grbs(shortName="u",  typeOfLevel='isobaricInhPa', level=tagHp)[0]
+        grbWv = grbs(shortName="v",  typeOfLevel='isobaricInhPa', level=tagHp)[0]
+        grbTm = grbs(shortName="t",  typeOfLevel='isobaricInhPa', level=tagHp)[0]
+        grbRh = grbs(shortName="r",  typeOfLevel='isobaricInhPa', level=tagHp)[0]
+        grbs.close()
+
+        latS, latN, lonW, lonE = -20, 80, 70, 190
+        _valHt, latHt, lonHt = grbHt.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
+        _valWu, _, _          = grbWu.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
+        _valWv, _, _          = grbWv.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
+        _valTm, latTm, lonTm  = grbTm.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
+        _valRh, _, _          = grbRh.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
+
+        _s = 3
+        _valHt = uniform_filter(_valHt, size=_s)
+        _valWu = uniform_filter(_valWu, size=_s)
+        _valWv = uniform_filter(_valWv, size=_s)
+        _valTm = uniform_filter(_valTm, size=_s)
+        _valRh = uniform_filter(_valRh, size=_s)
+
+        valHt_all.append(_valHt)
+        valWu_all.append(_valWu)
+        valWv_all.append(_valWv)
+        valTm_all.append(_valTm)
+        valRh_all.append(_valRh)
+
+        if lat is None:
+            lat    = latHt[:, 0]
+            lon    = lonHt[0, :]
+            dt_i   = grbHt.analDate
+            dt_str  = (dt_i.strftime("%H00UTC%d%b%Y")).upper()
+            dt_str2 = dt_i.strftime("%Y%m%d%H")
+
+    if not valTm_all:
+        print("エラー: 平均するデータがありません")
+        return False
+
+    valHt = np.mean(valHt_all, axis=0)
+    valWu = np.mean(valWu_all, axis=0)
+    valWv = np.mean(valWv_all, axis=0)
+    valTm = np.mean(valTm_all, axis=0)
+    valRh = np.mean(valRh_all, axis=0)
+
+    ds = xr.Dataset(
+        {
+            "Geopotential_height": (["lat", "lon"], valHt),
+            "u_wind":              (["lat", "lon"], valWu),
+            "v_wind":              (["lat", "lon"], valWv),
+            "Temperature":         (["lat", "lon"], valTm),
+            "RelativHumidity":     (["lat", "lon"], valRh * 0.01),
+        },
+        coords={
+            "time":  np.array([dt_i]),
+            "level": np.array(tagHp) * units.hPa,
+            "lat":   np.array(lat) * units('degrees_north'),
+            "lon":   np.array(lon) * units('degrees_east'),
+        },
+    )
+    ds['Geopotential_height'].attrs['units'] = 'm'
+    ds['u_wind'].attrs['units']          = 'm/s'
+    ds['v_wind'].attrs['units']          = 'm/s'
+    ds['Temperature'].attrs['units']     = 'K'
+    ds['RelativHumidity'].attrs['units'] = ''
+    ds['level'].attrs['units']           = 'hPa'
+    ds['lat'].attrs['units']             = 'degrees_north'
+    ds['lon'].attrs['units']             = 'degrees_east'
+
+    dsp = ds.metpy.parse_cf()
+    dsp['dewpoint_temperature'] = mpcalc.dewpoint_from_relative_humidity(
+        dsp['Temperature'], dsp['RelativHumidity'])
+    dsp['Equivalent_Potential_temperature'] = mpcalc.equivalent_potential_temperature(
+        dsp['level'], dsp['Temperature'], dsp['dewpoint_temperature'])
+
+    levels_ept0  = np.arange(270, 390,  3)
+    levels_ept0i = np.arange(270, 390,  3)
+    levels_ept1  = np.arange(270, 390, 15)
+    levels_eptf  = np.arange(270, 360,  3)
+    i_area = area if area is not None else [115, 151, 20, 50]
+
+    states_provinces = cfeature.NaturalEarthFeature(
+        category='cultural', name='admin_1_states_provinces_lines', scale='50m', facecolor='none')
+    country_borders = cfeature.NaturalEarthFeature(
+        category='cultural', name='admin_0_countries', scale='50m', facecolor='none')
+
+    proj        = ccrs.Stereographic(central_latitude=60, central_longitude=140)
+    latlon_proj = ccrs.PlateCarree()
+    fig = plt.figure(figsize=(10, 8))
+    plt.subplots_adjust(left=0, right=1, bottom=0.06, top=0.98)
+    ax = fig.add_subplot(1, 1, 1, projection=proj)
+    ax.set_extent(i_area, latlon_proj)
+
+    cnf_ept = ax.contourf(dsp['lon'], dsp['lat'], dsp['Equivalent_Potential_temperature'],
+                          levels_eptf, cmap="jet", extend='both', transform=latlon_proj)
+    ax_ept = fig.add_axes([0.1, 0.1, 0.8, 0.02])
+    fig.colorbar(cnf_ept, orientation='horizontal', shrink=0.74,
+                 aspect=40, pad=0.01, cax=ax_ept)
+
+    cn_ept0 = ax.contour(dsp['lon'], dsp['lat'], dsp['Equivalent_Potential_temperature'],
+                         colors='black', linewidths=0.3, levels=levels_ept0, transform=latlon_proj)
+    ax.clabel(cn_ept0, levels_ept0i, fontsize=8, inline=True,
+              inline_spacing=5, fmt='%i', rightside_up=True, colors='black')
+    cn_ept1 = ax.contour(dsp['lon'], dsp['lat'], dsp['Equivalent_Potential_temperature'],
+                         colors='black', linewidths=1.0, levels=levels_ept1, transform=latlon_proj)
+    ax.clabel(cn_ept1, levels_ept1, fontsize=12, inline=True,
+              inline_spacing=5, fmt='%i', rightside_up=True, colors='black')
+
+    ax.coastlines(resolution='50m', linewidth=1.6)
+    xticks = np.arange(0, 360, 10)
+    yticks = np.arange(-90, 90.1, 10)
+    gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=False, linewidth=1, alpha=0.8)
+    gl.xlocator = mticker.FixedLocator(xticks)
+    gl.ylocator = mticker.FixedLocator(yticks)
+
+    wind_slice = (slice(None, None, 5), slice(None, None, 5))
+    ax.barbs(dsp['lon'][wind_slice[0]], dsp['lat'][wind_slice[1]],
+             dsp['u_wind'].values[wind_slice] * 1.944,
+             dsp['v_wind'].values[wind_slice] * 1.944,
+             length=5.5, pivot='middle', color='black', transform=latlon_proj)
+
+    avg_label = f"FT{batch_start_h:03d}-{batch_end_h:03d}h_avg{avg_steps}"
+    fig.text(0.5, 0.01,
+             f"ECM {avg_label} IT:{dt_str} {tagHp}hPa EPT(K), Wind",
+             ha='center', va='bottom', size=15)
+
+    os.makedirs(output_dir, exist_ok=True)
+    out_fn = f"{output_dir}/{dt_str2}_{avg_label}_ECM_{tagHp}hPa_EPT.png"
+    plt.savefig(out_fn, dpi=150, bbox_inches='tight')
+    print(f"  平均出力: {out_fn}")
+    plt.close()
+    return True
+
+
 def main():
     args = parse_args()
     init_str = args.init_time
@@ -268,11 +429,21 @@ def main():
     print(f"予報時間: FT{ft_list[0]}h〜FT{ft_list[-1]}h（{args.n_steps}枚）")
     print()
 
-    success = 0
-    for ft in ft_list:
-        if plot_one(i_year, i_month, i_day, i_hourZ, ft, args.level, "./output"):
-            success += 1
-    print(f"\n完了: {success}/{args.n_steps}枚 出力先: ./output/")
+    if args.avg_steps > 1:
+        print(f"平均モード: start_ft={args.start_ft}h, avg_steps={args.avg_steps}, n_steps={args.n_steps}")
+        print()
+        success = 0
+        for step_i in range(args.n_steps):
+            batch_start_h = args.start_ft + step_i * (6 * args.avg_steps)
+            if plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, args.avg_steps, args.level, "./output", area=args.area):
+                success += 1
+        print(f"\n完了: {success}/{args.n_steps}枚 出力先: ./output/")
+    else:
+        success = 0
+        for ft in ft_list:
+            if plot_one(i_year, i_month, i_day, i_hourZ, ft, args.level, "./output", area=args.area):
+                success += 1
+        print(f"\n完了: {success}/{args.n_steps}枚 出力先: ./output/")
 
 
 if __name__ == "__main__":
