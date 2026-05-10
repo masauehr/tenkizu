@@ -10,7 +10,7 @@ GSM（全球モデル）や ECMWF GRIB2 データから各種高層・地上天�
 ## 概要
 
 - **対応データ**: 気象庁 GSM（全球モデル）・ECMWF（欧州中期予報センターモデル）
-- **スクリプト数**: 描画スクリプト 16 種類（GSM 11本・ECM 6本）＋レポート生成スクリプト 3本
+- **スクリプト数**: 描画スクリプト 16 種類（GSM 10本・ECM 6本）＋レポート生成スクリプト 5本
 - **図法**: ステレオ投影（中心: 60°N, 140°E）
 - **描画領域**: 108〜156°E, 17〜55°N（極東域）
 - **出力形式**: PNG（DPI 150, 10×8 インチ）
@@ -129,10 +129,10 @@ tenkizu/
 ├── ECM_SurfacePressure.py  # ECMWF 地上気圧（±可降水量/積算降水量）
 ├── GSM_100hPa.py           # GSM 100hPa（任意気圧面）等高度線・ISOTAC・風矢羽
 ├── ECM_100hPa.py           # ECMWF 100hPa（任意気圧面）等高度線・ISOTAC・風矢羽
-├── upper_wind_report.py      # 上層天気図レポート生成（--push でGitHub push、MDにFTラベル付き）
-├── jet_front_report.py       # ジェット・前線解析レポート生成（--push でGitHub push）
+├── jet_front_report.py       # ジェット・前線解析レポート（上層風・断面図・EPT850・地上気圧）
 ├── jet_front_wide_report.py  # 広域ジェット・前線解析レポート（上層風＋850hPa EPT、--avg_steps で予報時間平均対応）
 ├── jet_front_ave_report.py   # 時間平均ジェット・前線解析レポート（複数初期時刻FT=0h平均、梅雨入り判断に有効）
+├── upper_wind_report.py      # 上層天気図レポート生成（--push でGitHub push、MDにFTラベル付き）
 ├── synop_report.py           # 総観天気図レポート生成（Jet・Fax57・Fax78・EPT850・地上気圧、--ecm でECM追加）
 ├── make_pptx.py            # PNG → PowerPoint 自動生成（GSM/ECM 主要7グループ）
 ├── make_pptx2.py           # PNG → PowerPoint 自動生成（残り3グループ）
@@ -188,189 +188,62 @@ python <スクリプト名> INIT_TIME [START_FT [N_STEPS [その他]]]
 |------|------|----------|
 | `INIT_TIME` | 初期時刻 YYYYMMDDHH（UTC）**必須** | — |
 | `START_FT` | 開始予報時間。**GSM=DDHH形式**、**ECM=時間数** | GSM:`0000` / ECM:`0` |
-| `N_STEPS` | 作成する枚数（6h間隔） | `1` |
+| `N_STEPS` | 作成する枚数またはプリセット名（`12h` / `24h`） | `1` |
+| `--interval N` | FT間隔 時間数（プリセット指定時は無視） | `6` |
+
+**時間プリセット（N_STEPS に指定可能）:**
+
+| プリセット | FT一覧 | 枚数 | 用途 |
+|-----------|--------|------|------|
+| `12h` | 0, 12, 24, 36, 48h | 5枚 | 短期予報チェック（12h間隔） |
+| `24h` | 0, 24, 48, 72, 96, 120h | 6枚 | 中期予報チェック（24h間隔） |
 
 ---
 
-### 一括生成（全スクリプト）
+### レポート生成スクリプト（まとめて実行・GitHub push）
+
+5本のレポートスクリプトが利用可能。いずれも `reports/{init_str}/` に PNG と Markdown を生成し、`--push` 指定時に GitHub へ push する。
+
+#### ジェット・前線解析レポート（jet_front_report.py）
+
+上層風（GSM/ECM）・鉛直断面図（GSM）・850hPa相当温位（GSM/ECM）・地上気圧（GSM/ECM）を一括生成するスクリプト。
 
 ```bash
-bash run_all_charts.sh INIT_TIME [START_FT_DDHH [N_STEPS|key]]
-```
-
-```bash
-bash run_all_charts.sh 2026041200              # FT=0h 各1枚
-bash run_all_charts.sh 2026041200 0000 5       # FT=0,6,12,18,24h 各5枚
-bash run_all_charts.sh 2026041200 0100 3       # FT=24,30,36h 各3枚
-bash run_all_charts.sh 2026041200 0000 key     # FT=0,12,24,36,48h 各5枚（keyモード）
-```
-
-`key` を指定すると FT=0/12/24/36/48h の5枚を生成する（`START_FT` は無視）。  
-ECM 系スクリプトへの引数変換（DDHH → 時間数）は内部で自動処理される。
-
----
-
-### GSM 系スクリプト（データ: RISHサーバーから自動DL）
-
-起動時にデータが `data_gsm/` になければ自動でダウンロードを試みる。
-
-| スクリプト | 主な描画要素 |
-|-----------|------------|
-| `GSM_tenkizu500hPa.py` | 等高度線(60m/300m)・渦度シェード・H/L |
-| `GSM_QVector850hPa.py` | Qベクター発散・等温度線・等高度線 |
-| `GSM_Jet300hPa.py` | 等風速線・非地衡風・収束発散シェード |
-| `GSM_Instability.py` | 不安定域(SEPT−maxEPT差)シェード・上層気温 |
-| `GSM_CrossSection.py` | ポテンシャル温位・EPT・風の鉛直断面 |
-| `GSM_fax57.py` | 500hPa等温度線(青)・700hPa T-Tdシェード・W/C |
-| `GSM_fax78.py` | 850hPa等温度線・風矢羽・700hPa発散シェード・W/C |
-| `GSM_faxSrfPre.py` | 等圧線(4/20hPa)・10m風矢羽・2m等温度線・H/L |
-| `GSM_EPT850hPa.py` | 850hPa相当温位シェード・等値線・風矢羽 |
-
-```bash
-# 共通の実行形式（例）
-python GSM_fax57.py 2026041200            # FT=0h 1枚
-python GSM_fax57.py 2026041200 0000 5    # FT=0〜24h 5枚
-python GSM_fax78.py 2026041200 0000 key  # ※keyはrun_all_charts.sh専用
-```
-
----
-
-### ECMWF 系スクリプト（データ: ECMWF Open Dataから自動DL）
-
-最新約5日分のみ無償取得可能。起動時に `data/ecm/` になければ自動でダウンロードを試みる。  
-過去データは Copernicus CDS API（`https://cds.climate.copernicus.eu`）を利用。
-
-`START_FT` は **時間数**（例: `0`, `6`, `24`）で指定する。
-
-| スクリプト | 主な描画要素 |
-|-----------|------------|
-| `ECM_tenkizu500hPa.py` | 等高度線(60m/300m)・渦度シェード・H/L |
-| `ECM_EPT850hPa.py` | 850hPa相当温位シェード・等値線・風矢羽 |
-| `ECM_Fax57.py` | 500hPa等温度線(青)・700hPa T-Tdシェード・W/C |
-| `ECM_Fax78.py` | 850hPa等温度線・風矢羽・700hPa発散シェード・W/C |
-| `ECM_SurfacePressure.py` | 等圧線・10m風矢羽・2m等温度線・H/L（±TCWV/TP） |
-
-```bash
-python ECM_Fax57.py 2026041200 0 1          # FT=0h 1枚
-python ECM_Fax57.py 2026041200 0 5          # FT=0,6,12,18,24h 5枚
-python ECM_SurfacePressure.py 2026041200 0 5 --tcwv   # 可降水量シェードあり
-python ECM_SurfacePressure.py 2026041200 6 3 --tp     # 積算降水量（FT>0必須）
-```
-
----
-
-### 自動データ取得＆一括生成（推奨）
-
-最新の init_time を自動検索してデータ取得・全スクリプトを一括実行するスクリプト。
-
-#### GSM系: `run_gsm_auto.py`
-
-RISHサーバーのディレクトリ一覧を確認して最新の init_time を特定し、全9本のGSMスクリプトを実行する。
-
-```bash
-python run_gsm_auto.py                              # 最新データ、FT=0,12,24,36,48h（keyモード）
-python run_gsm_auto.py --steps 5                   # 最新データ、FT=0,6,12,18,24h（連続5枚）
-python run_gsm_auto.py --init-time 2026041200      # 初期時刻を手動指定
-python run_gsm_auto.py --init-time 2026041200 --start-ft 0100 --steps 3  # FT=24,30,36h
-```
-
-| オプション | 説明 | デフォルト |
-|-----------|------|-----------|
-| `--init-time` | 初期時刻 YYYYMMDDHH（省略時は自動検索） | 自動 |
-| `--steps` | 連続枚数（6h間隔。省略時はkeyモード） | keyモード |
-| `--start-ft` | 開始予報時間（DDHH形式、`--steps` 使用時） | `0000` |
-
-#### ECMWF系: `run_ecm_auto.py`
-
-ECMWF Open Dataサーバーへの HEAD リクエストで最新の init_time を特定し、全5本のECMスクリプトを実行する。
-
-```bash
-python run_ecm_auto.py                              # 最新データ、FT=0,12,24,36,48h（keyモード）
-python run_ecm_auto.py --steps 5                   # 最新データ、FT=0,6,12,18,24h（連続5枚）
-python run_ecm_auto.py --init-time 2026041200      # 初期時刻を手動指定
-python run_ecm_auto.py --tcwv                      # 地上気圧図に可降水量シェードを追加
-python run_ecm_auto.py --tp                        # 地上気圧図に積算降水量シェードを追加（FT>0のみ）
-```
-
-| オプション | 説明 | デフォルト |
-|-----------|------|-----------|
-| `--init-time` | 初期時刻 YYYYMMDDHH（省略時は自動検索） | 自動 |
-| `--steps` | 連続枚数（6h間隔。省略時はkeyモード） | keyモード |
-| `--start-ft` | 開始予報時間（時間数、`--steps` 使用時） | `0` |
-| `--tcwv` | `ECM_SurfacePressure.py` に可降水量シェードを追加 | なし |
-| `--tp` | `ECM_SurfacePressure.py` に積算降水量シェードを追加（FT>0必須） | なし |
-
-> **ECMWF Open Data は最新約5日分のみ無償**。過去データは Copernicus CDS API が必要。
-
----
-
-### GSM データ事前ダウンロード
-
-`download_gsm.py` で `data_gsm/` にデータを事前取得できる（各スクリプト起動時の自動DLと同等）。
-
-```bash
-python download_gsm.py                        # 最新データを自動検索
-python download_gsm.py --date 20171210        # 指定日（00/12UTC両方）
-python download_gsm.py --date 20171210 --hour 12
-python download_gsm.py --start 20171208 --end 20171210
-python download_gsm.py --date 20171210 --ft 0000 0012 0100
-```
-
----
-
-## 上層天気図レポート生成（upper_wind_report.py）
-
-指定した気圧面の上層天気図（GSM・必要に応じてECMWF）を生成し、  
-`reports/{init_str}/` に PNG と Markdown レポートをまとめて GitHub へ push するスクリプト。
-
-### 処理の流れ
-
-1. `GSM_100hPa.py` を呼び出して指定気圧面の天気図を生成（`output/` に PNG 出力）
-2. `--ecm` 指定時は `ECM_100hPa.py` も実行
-3. 生成された PNG を `reports/{init_str}/` にコピー
-4. 気圧面→モデル→FT の階層構造で `upper_wind_report_{FTラベル}.md` を生成
-5. `--push` 指定時のみ `git add → commit → push`（同一再実行時は変更なしをスキップ）
-
-### 引数
-
-```bash
-python upper_wind_report.py INIT_TIME [start_ft] [n_steps] [--levels レベル...] [--ecm] [--push]
+python jet_front_report.py INIT_TIME [start_ft] [n_steps] [--interval N] [--levels ...] [--ecm] [--push]
+                           [--lat-s N] [--lat-e N] [--lon-s N] [--lon-e N]
 ```
 
 | 引数 | 形式 | デフォルト | 説明 |
 |---|---|---|---|
 | `INIT_TIME` | YYYYMMDDHH | 必須 | 初期時刻（UTC） |
-| `start_ft` | DDHH | `0000` | 開始予報時間（GSMのDDHH形式） |
-| `n_steps` | 整数 | `1` | 作成枚数（6h間隔） |
-| `--levels` | 整数 複数可 | `100` | 気圧面 hPa（複数指定可） |
-| `--ecm` | フラグ | なし | ECMWFも実行（省略時はGSMのみ） |
-| `--push` | フラグ | なし | GitHub へ git push（省略時はローカル保存のみ） |
-
-### 使用例
+| `start_ft` | DDHH | `0000` | 開始予報時間 |
+| `n_steps` | 整数 / `12h` / `24h` | `1` | 枚数またはプリセット |
+| `--interval` | 時間数 | `6` | FT間隔（プリセット指定時は無視） |
+| `--levels` | 整数 複数可 | `100` | 上層風の気圧面 hPa |
+| `--ecm` | フラグ | なし | ECMWFも実行 |
+| `--push` | フラグ | なし | GitHub へ git push |
+| `--lat-s` | 度 | `45` | 断面図 北端緯度 |
+| `--lat-e` | 度 | `25` | 断面図 南端緯度 |
+| `--lon-s` | 度 | `130` | 断面図 西端経度 |
+| `--lon-e` | 度 | `130` | 断面図 東端経度 |
 
 ```bash
-python upper_wind_report.py 2026041200                               # 100hPa GSMのみ FT=0h
-python upper_wind_report.py 2026041200 0000 5                        # 100hPa GSMのみ 5枚
-python upper_wind_report.py 2026041200 --ecm                         # 100hPa GSM+ECM FT=0h
-python upper_wind_report.py 2026041200 --levels 100 50               # 100+50hPa GSMのみ
-python upper_wind_report.py 2026041200 0000 5 --levels 100 50 --ecm  # 複数面・GSM+ECM
-python upper_wind_report.py 2026041200 0000 5 --push                 # 生成後 GitHub push
+python jet_front_report.py 2026041200                           # GSMのみ FT=0h
+python jet_front_report.py 2026041200 0000 5                    # GSMのみ 5枚（6h間隔）
+python jet_front_report.py 2026041200 0000 12h                  # 12hプリセット（FT=0〜48h）
+python jet_front_report.py 2026041200 0000 24h                  # 24hプリセット（FT=0〜120h）
+python jet_front_report.py 2026041200 0000 5 --interval 12      # 12h間隔 5枚
+python jet_front_report.py 2026041200 --ecm                     # GSM+ECM FT=0h
+python jet_front_report.py 2026041200 --levels 100 50           # 上層風を100+50hPa
+python jet_front_report.py 2026041200 0000 12h --ecm --levels 100 50
+python jet_front_report.py 2026041200 --lat-s 45 --lat-e 25 --lon-s 125 --lon-e 135
 ```
 
-### 生成物
-
-```
-reports/
-└── {init_str}/
-    ├── upper_wind_report_FT0.md               # 1枚の場合
-    ├── upper_wind_report_FT0-24.md            # 5枚（FT=0〜24h）の場合
-    ├── {dt}_FT{FFF}h_GSM_{lev}hPa_Height_Wind.png
-    └── {dt}_FT{FFF}h_ECM_{lev}hPa_Height_Wind.png  # --ecm 時のみ
-```
+生成物: `reports/{init_str}/jet_front_report_{FTラベル}.md`
 
 ---
 
-## ジェット・前線解析（広域）レポート生成（jet_front_wide_report.py）
+#### ジェット・前線解析（広域）レポート（jet_front_wide_report.py）
 
 上層風（指定気圧面）と 850hPa 相当温位を**広域描画範囲**で一括生成し Markdown レポートにまとめるスクリプト。  
 `jet_front_report.py` から鉛直断面図・地上気圧を除いた広域版。`--avg_steps N` で複数 FT の平均天気図にも対応。
@@ -383,27 +256,30 @@ reports/
 | 850hPa | 97°E | 169°E | -2.5°N | 42.5°N |
 
 ```bash
-python jet_front_wide_report.py INIT_TIME [start_ft] [n_steps] [--levels ...] [--ecm] [--avg_steps N] [--push]
+python jet_front_wide_report.py INIT_TIME [start_ft] [n_steps] [--interval N] [--levels ...] [--ecm] [--avg_steps N] [--push]
 ```
 
 | 引数 | 形式 | デフォルト | 説明 |
 |---|---|---|---|
 | `INIT_TIME` | YYYYMMDDHH | 必須 | 初期時刻（UTC） |
 | `start_ft` | DDHH | `0000` | 開始予報時間 |
-| `n_steps` | 整数 | `1` | 出力枚数（6h間隔） |
+| `n_steps` | 整数 / `12h` / `24h` | `1` | 枚数またはプリセット（`--avg_steps` 指定時は整数のみ） |
+| `--interval` | 時間数 | `6` | FT間隔（プリセット指定時・`--avg_steps` 指定時は無視） |
 | `--levels` | 整数 複数可 | `100` | 上層風の気圧面 hPa |
 | `--ecm` | フラグ | なし | ECMWFも実行 |
 | `--avg_steps` | 整数 | `1` | 平均する FT 個数（N 指定時: start_ft から N 個を 6h 間隔で平均して 1 枚出力） |
 | `--push` | フラグ | なし | GitHub へ git push（省略時はローカル保存のみ） |
 
 ```bash
-python jet_front_wide_report.py 2026041200                          # GSMのみ FT=0h
-python jet_front_wide_report.py 2026041200 0000 5                   # GSMのみ 5枚（FT=0〜24h）
-python jet_front_wide_report.py 2026041200 --ecm                    # GSM+ECM FT=0h
-python jet_front_wide_report.py 2026041200 --levels 100 50          # 100hPa + 50hPa
-python jet_front_wide_report.py 2026041200 0000 3 --avg_steps 4     # FT0-18h, FT24-42h, FT48-66h 各平均 3枚
+python jet_front_wide_report.py 2026041200                           # GSMのみ FT=0h
+python jet_front_wide_report.py 2026041200 0000 5                    # GSMのみ 5枚（6h間隔）
+python jet_front_wide_report.py 2026041200 0000 12h                  # 12hプリセット（FT=0〜48h）
+python jet_front_wide_report.py 2026041200 0000 5 --interval 12      # 12h間隔 5枚
+python jet_front_wide_report.py 2026041200 --ecm                     # GSM+ECM FT=0h
+python jet_front_wide_report.py 2026041200 --levels 100 50           # 100hPa + 50hPa
+python jet_front_wide_report.py 2026041200 0000 3 --avg_steps 4      # FT0-18h, FT24-42h, FT48-66h 各平均 3枚
 python jet_front_wide_report.py 2026041200 0000 1 --levels 100 50 --ecm --avg_steps 4  # 50+100hPa 平均 GSM+ECM
-python jet_front_wide_report.py 2026041200 0000 5 --push            # 生成後 GitHub push
+python jet_front_wide_report.py 2026041200 0000 5 --push             # 生成後 GitHub push
 ```
 
 生成物: `reports/{init_str}-wide/jet_front_wide_report_{FTラベル}.md`
@@ -415,7 +291,7 @@ python jet_front_wide_report.py 2026041200 0000 5 --push            # 生成後 
 
 ---
 
-## ジェット・前線解析（広域・時間平均）レポート生成（jet_front_ave_report.py）
+#### ジェット・前線解析（広域・時間平均）レポート（jet_front_ave_report.py）
 
 指定した最新初期時刻から 12 時間ごとに遡った複数の初期時刻の **FT=0h（解析値）** を平均した天気図を生成するスクリプト。  
 `jet_front_wide_report.py` と同じ広域描画範囲を使用し、瞬間場ではなく「平均場」を出力する。
@@ -459,28 +335,88 @@ python jet_front_ave_report.py 2026050600 5 --push                      # 5日�
 
 ---
 
-## 総観天気図レポート生成（synop_report.py）
+#### 上層天気図レポート（upper_wind_report.py）
+
+指定した気圧面の上層天気図（GSM・必要に応じてECMWF）を生成し、  
+`reports/{init_str}/` に PNG と Markdown レポートをまとめて GitHub へ push するスクリプト。
+
+```bash
+python upper_wind_report.py INIT_TIME [start_ft] [n_steps] [--interval N] [--levels レベル...] [--ecm] [--push]
+```
+
+| 引数 | 形式 | デフォルト | 説明 |
+|---|---|---|---|
+| `INIT_TIME` | YYYYMMDDHH | 必須 | 初期時刻（UTC） |
+| `start_ft` | DDHH | `0000` | 開始予報時間（GSMのDDHH形式） |
+| `n_steps` | 整数 / `12h` / `24h` | `1` | 枚数またはプリセット |
+| `--interval` | 時間数 | `6` | FT間隔（プリセット指定時は無視） |
+| `--levels` | 整数 複数可 | `100` | 気圧面 hPa（複数指定可） |
+| `--ecm` | フラグ | なし | ECMWFも実行（省略時はGSMのみ） |
+| `--push` | フラグ | なし | GitHub へ git push（省略時はローカル保存のみ） |
+
+```bash
+python upper_wind_report.py 2026041200                                # 100hPa GSMのみ FT=0h
+python upper_wind_report.py 2026041200 0000 5                         # 100hPa GSMのみ 5枚（6h間隔）
+python upper_wind_report.py 2026041200 0000 12h                       # 12hプリセット（FT=0〜48h）
+python upper_wind_report.py 2026041200 0000 24h                       # 24hプリセット（FT=0〜120h）
+python upper_wind_report.py 2026041200 0000 5 --interval 12           # 12h間隔 5枚
+python upper_wind_report.py 2026041200 --ecm                          # 100hPa GSM+ECM FT=0h
+python upper_wind_report.py 2026041200 --levels 100 50                # 100+50hPa GSMのみ
+python upper_wind_report.py 2026041200 0000 12h --levels 100 50 --ecm # 複数面・GSM+ECM
+python upper_wind_report.py 2026041200 0000 5 --push                  # 生成後 GitHub push
+```
+
+生成物:
+```
+reports/
+└── {init_str}/
+    ├── upper_wind_report_FT0.md               # 1枚の場合
+    ├── upper_wind_report_FT0-24.md            # 5枚（FT=0〜24h）の場合
+    ├── {dt}_FT{FFF}h_GSM_{lev}hPa_Height_Wind.png
+    └── {dt}_FT{FFF}h_ECM_{lev}hPa_Height_Wind.png  # --ecm 時のみ
+```
+
+---
+
+#### 総観天気図レポート（synop_report.py）
 
 Jet300hPa・Fax57・Fax78・850hPa相当温位・地上気圧を組み合わせた  
 総観スケール解析用チャートセットを一括生成し Markdown レポートにまとめるスクリプト。
 
 ```bash
-python synop_report.py INIT_TIME [start_ft] [n_steps] [--ecm] [--push]
+python synop_report.py INIT_TIME [start_ft] [n_steps] [--interval N] [--charts ...] [--ecm] [--push]
 ```
 
 | 引数 | 形式 | デフォルト | 説明 |
 |---|---|---|---|
 | `INIT_TIME` | YYYYMMDDHH | 必須 | 初期時刻（UTC） |
 | `start_ft` | DDHH | `0000` | 開始予報時間 |
-| `n_steps` | 整数 | `1` | 枚数（6h間隔） |
-| `--ecm` | フラグ | なし | ECMWFも実行（Jetは `ECM_100hPa.py level=300` を使用） |
+| `n_steps` | 整数 / `12h` / `24h` | `1` | 枚数またはプリセット |
+| `--interval` | 時間数 | `6` | FT間隔（プリセット指定時は無視） |
+| `--charts` | 複数可（下記参照） | 全て | 描画する種別 |
+| `--ecm` | フラグ | なし | ECMWFも実行（Jetは常にGSMのみ） |
 | `--push` | フラグ | なし | GitHub へ git push（省略時はローカル保存のみ） |
 
+**`--charts` 選択肢:**
+
+| 値 | 内容 |
+|----|------|
+| `jet` | GSM Jet 300hPa（Isotach・非地衡風・高度） |
+| `fax57` | GSM/ECM 500/700hPa（等高度線・渦度・風） |
+| `fax78` | GSM/ECM 700/850hPa（等高度線・相当温位・風） |
+| `ept` | GSM/ECM 850hPa 相当温位・風矢羽 |
+| `srf` | GSM/ECM 地上気圧・10m風・2m気温 |
+
 ```bash
-python synop_report.py 2026041200               # GSMのみ FT=0h
-python synop_report.py 2026041200 0000 5        # GSMのみ 5枚
-python synop_report.py 2026041200 --ecm         # GSM+ECM FT=0h
-python synop_report.py 2026041200 0000 5 --ecm --push  # GSM+ECM 5枚 → GitHub push
+python synop_report.py 2026041200                               # GSMのみ FT=0h（全種別）
+python synop_report.py 2026041200 0000 5                        # GSMのみ 5枚（6h間隔）
+python synop_report.py 2026041200 0000 12h                      # 12hプリセット（FT=0〜48h）
+python synop_report.py 2026041200 0000 24h                      # 24hプリセット（FT=0〜120h）
+python synop_report.py 2026041200 0000 5 --interval 12          # 12h間隔 5枚
+python synop_report.py 2026041200 --ecm                         # GSM+ECM FT=0h
+python synop_report.py 2026041200 --charts jet fax57            # jet と fax57 のみ
+python synop_report.py 2026041200 0000 12h --ecm --charts ept srf  # プリセット＋種別指定
+python synop_report.py 2026041200 0000 5 --ecm --push           # GSM+ECM 5枚 → GitHub push
 ```
 
 生成物: `reports/{init_str}/synop_report_{FTラベル}.md`
@@ -488,6 +424,134 @@ python synop_report.py 2026041200 0000 5 --ecm --push  # GSM+ECM 5枚 → GitHub
 MDの章構成: Jet 300hPa → 500/700hPa → 700/850hPa → 850hPa相当温位 → 地上気圧（各章にGSM/ECM節）
 
 > Jet の GSM版（Isotach+非地衡風）と ECM版（高度+風矢羽）は描画内容が異なる。
+
+---
+
+### 一括生成（全スクリプト）
+
+```bash
+bash run_all_charts.sh INIT_TIME [START_FT_DDHH [N_STEPS|12h|24h]] [--ecm] [--interval N]
+```
+
+```bash
+bash run_all_charts.sh 2026041200                          # FT=0h 各1枚
+bash run_all_charts.sh 2026041200 0000 5                   # FT=0,6,12,18,24h 各5枚
+bash run_all_charts.sh 2026041200 0100 3                   # FT=24,30,36h 各3枚
+bash run_all_charts.sh 2026041200 0000 12h                 # FT=0,12,24,36,48h 各5枚（12hプリセット）
+bash run_all_charts.sh 2026041200 0000 24h                 # FT=0,24,48,72,96,120h 各6枚（24hプリセット）
+bash run_all_charts.sh 2026041200 0000 5 --interval 12     # 12h間隔 5枚
+bash run_all_charts.sh 2026041200 0000 5 --ecm             # FT=0,6,12,18,24h GSM+ECM5枚
+```
+
+`12h` / `24h` を指定すると所定の時間プリセットで全スクリプトを実行する（`START_FT` は無視）。  
+ECM 系スクリプトへの引数変換（DDHH → 時間数）は内部で自動処理される。
+
+---
+
+### GSM 系スクリプト（データ: RISHサーバーから自動DL）
+
+起動時にデータが `data_gsm/` になければ自動でダウンロードを試みる。
+
+| スクリプト | 主な描画要素 |
+|-----------|------------|
+| `GSM_tenkizu500hPa.py` | 等高度線(60m/300m)・渦度シェード・H/L |
+| `GSM_QVector850hPa.py` | Qベクター発散・等温度線・等高度線 |
+| `GSM_Jet300hPa.py` | 等風速線・非地衡風・収束発散シェード |
+| `GSM_Instability.py` | 不安定域(SEPT−maxEPT差)シェード・上層気温 |
+| `GSM_CrossSection.py` | ポテンシャル温位・EPT・風の鉛直断面 |
+| `GSM_fax57.py` | 500hPa等温度線(青)・700hPa T-Tdシェード・W/C |
+| `GSM_fax78.py` | 850hPa等温度線・風矢羽・700hPa発散シェード・W/C |
+| `GSM_faxSrfPre.py` | 等圧線(4/20hPa)・10m風矢羽・2m等温度線・H/L |
+| `GSM_EPT850hPa.py` | 850hPa相当温位シェード・等値線・風矢羽 |
+
+```bash
+# 共通の実行形式（例）
+python GSM_fax57.py 2026041200            # FT=0h 1枚
+python GSM_fax57.py 2026041200 0000 5    # FT=0〜24h 5枚（6h間隔）
+```
+
+---
+
+### ECMWF 系スクリプト（データ: ECMWF Open Dataから自動DL）
+
+最新約5日分のみ無償取得可能。起動時に `data/ecm/` になければ自動でダウンロードを試みる。  
+過去データは Copernicus CDS API（`https://cds.climate.copernicus.eu`）を利用。
+
+`START_FT` は **時間数**（例: `0`, `6`, `24`）で指定する。
+
+| スクリプト | 主な描画要素 |
+|-----------|------------|
+| `ECM_tenkizu500hPa.py` | 等高度線(60m/300m)・渦度シェード・H/L |
+| `ECM_EPT850hPa.py` | 850hPa相当温位シェード・等値線・風矢羽 |
+| `ECM_Fax57.py` | 500hPa等温度線(青)・700hPa T-Tdシェード・W/C |
+| `ECM_Fax78.py` | 850hPa等温度線・風矢羽・700hPa発散シェード・W/C |
+| `ECM_SurfacePressure.py` | 等圧線・10m風矢羽・2m等温度線・H/L（±TCWV/TP） |
+
+```bash
+python ECM_Fax57.py 2026041200 0 1          # FT=0h 1枚
+python ECM_Fax57.py 2026041200 0 5          # FT=0,6,12,18,24h 5枚
+python ECM_SurfacePressure.py 2026041200 0 5 --tcwv   # 可降水量シェードあり
+python ECM_SurfacePressure.py 2026041200 6 3 --tp     # 積算降水量（FT>0必須）
+```
+
+---
+
+### 自動データ取得＆一括生成（推奨）
+
+最新の init_time を自動検索してデータ取得・全スクリプトを一括実行するスクリプト。
+
+#### GSM系: `run_gsm_auto.py`
+
+RISHサーバーのディレクトリ一覧を確認して最新の init_time を特定し、全9本のGSMスクリプトを実行する。
+
+```bash
+python run_gsm_auto.py                              # 最新データ、FT=0,12,24,36,48h（12hプリセット）
+python run_gsm_auto.py --steps 5                   # 最新データ、FT=0,6,12,18,24h（連続5枚）
+python run_gsm_auto.py --init-time 2026041200      # 初期時刻を手動指定
+python run_gsm_auto.py --init-time 2026041200 --start-ft 0100 --steps 3  # FT=24,30,36h
+```
+
+| オプション | 説明 | デフォルト |
+|-----------|------|-----------|
+| `--init-time` | 初期時刻 YYYYMMDDHH（省略時は自動検索） | 自動 |
+| `--steps` | 連続枚数（6h間隔。省略時は12hプリセット） | 12hプリセット |
+| `--start-ft` | 開始予報時間（DDHH形式、`--steps` 使用時） | `0000` |
+
+#### ECMWF系: `run_ecm_auto.py`
+
+ECMWF Open Dataサーバーへの HEAD リクエストで最新の init_time を特定し、全5本のECMスクリプトを実行する。
+
+```bash
+python run_ecm_auto.py                              # 最新データ、FT=0,12,24,36,48h（12hプリセット）
+python run_ecm_auto.py --steps 5                   # 最新データ、FT=0,6,12,18,24h（連続5枚）
+python run_ecm_auto.py --init-time 2026041200      # 初期時刻を手動指定
+python run_ecm_auto.py --tcwv                      # 地上気圧図に可降水量シェードを追加
+python run_ecm_auto.py --tp                        # 地上気圧図に積算降水量シェードを追加（FT>0のみ）
+```
+
+| オプション | 説明 | デフォルト |
+|-----------|------|-----------|
+| `--init-time` | 初期時刻 YYYYMMDDHH（省略時は自動検索） | 自動 |
+| `--steps` | 連続枚数（6h間隔。省略時は12hプリセット） | 12hプリセット |
+| `--start-ft` | 開始予報時間（時間数、`--steps` 使用時） | `0` |
+| `--tcwv` | `ECM_SurfacePressure.py` に可降水量シェードを追加 | なし |
+| `--tp` | `ECM_SurfacePressure.py` に積算降水量シェードを追加（FT>0必須） | なし |
+
+> **ECMWF Open Data は最新約5日分のみ無償**。過去データは Copernicus CDS API が必要。
+
+---
+
+### GSM データ事前ダウンロード
+
+`download_gsm.py` で `data_gsm/` にデータを事前取得できる（各スクリプト起動時の自動DLと同等）。
+
+```bash
+python download_gsm.py                        # 最新データを自動検索
+python download_gsm.py --date 20171210        # 指定日（00/12UTC両方）
+python download_gsm.py --date 20171210 --hour 12
+python download_gsm.py --start 20171208 --end 20171210
+python download_gsm.py --date 20171210 --ft 0000 0012 0100
+```
 
 ---
 
@@ -614,6 +678,9 @@ plt.close()
 | 2026-05-07 | `GSM_100hPa.py`・`ECM_100hPa.py`・`GSM_EPT850hPa.py`・`ECM_EPT850hPa.py` に `--avg_steps N` 追加（予報時間軸の平均天気図生成） |
 | 2026-05-07 | `jet_front_wide_report.py` に `--avg_steps N` 追加（start_ft から 6h 間隔で N 個を平均した天気図セット生成） |
 | 2026-05-07 | `jet_front_ave_report.py` を新規作成（複数初期時刻 FT=0h の時間平均天気図。梅雨入り等の平均場把握に有効） |
+| 2026-05-10 | 全レポートスクリプト・`run_all_charts.sh` に時間プリセット（`12h`/`24h`）と `--interval` オプションを追加 |
+| 2026-05-10 | `synop_report.py` に `--charts` オプション追加（描画種別の個別選択。旧 `--keys` から改称） |
+| 2026-05-10 | `run_all_charts.sh` のプリセット名を `key` → `12h`/`24h` に改称、`24h` プリセット（FT=0〜120h）を追加 |
 
 ---
 

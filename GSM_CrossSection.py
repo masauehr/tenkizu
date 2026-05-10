@@ -130,7 +130,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh,
     grbWv = grbs(shortName="v",  typeOfLevel='isobaricInhPa', level=lambda l: l >= tagHp)
     grbTm = grbs(shortName="t",  typeOfLevel='isobaricInhPa', level=lambda l: l >= tagHp)
     grbRh = grbs(shortName="r",  typeOfLevel='isobaricInhPa', level=lambda l: l >= topRh)
-    dt    = grbHt[0].validDate
+    dt    = grbHt[0].analDate
     grbs.close()
 
     lats2, lons2 = grbHt[0].latlons()

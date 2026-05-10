@@ -7,10 +7,13 @@
 #
 # 使用例:
 #   python upper_wind_report.py 2026041200                        # 100hPa GSMのみ FT=0h 1枚
-#   python upper_wind_report.py 2026041200 0000 5                 # 100hPa GSMのみ 5枚
+#   python upper_wind_report.py 2026041200 0000 5                 # 100hPa GSMのみ 5枚（6h間隔）
+#   python upper_wind_report.py 2026041200 0000 12h               # 12hプリセット（FT=0〜48h）
+#   python upper_wind_report.py 2026041200 0000 24h               # 24hプリセット（FT=0〜120h）
+#   python upper_wind_report.py 2026041200 0000 5 --interval 12   # 12h間隔 5枚
 #   python upper_wind_report.py 2026041200 --ecm                  # 100hPa GSM+ECM FT=0h 1枚
 #   python upper_wind_report.py 2026041200 --levels 100 50        # 100+50hPa GSMのみ FT=0h
-#   python upper_wind_report.py 2026041200 0000 5 --levels 100 50 --ecm  # 複数面・複数FT・GSM+ECM
+#   python upper_wind_report.py 2026041200 0000 12h --levels 100 50 --ecm
 #
 # 作成: 20260428 上原政博
 
@@ -22,33 +25,51 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 
+# 時間プリセット
+PRESETS = {
+    "12h": {"interval": 12, "n_steps": 5},   # FT=0,12,24,36,48h
+    "24h": {"interval": 24, "n_steps": 6},   # FT=0,24,48,72,96,120h
+}
+
 
 def ddhh_to_hours(ddhh):
     return (ddhh // 100) * 24 + (ddhh % 100)
 
 
+def hours_to_ddhh(h):
+    return (h // 24) * 100 + (h % 24)
+
+
 def parse_args():
+    preset_list = ", ".join(f"{k}（{v['interval']}h間隔×{v['n_steps']}枚）" for k, v in PRESETS.items())
     parser = argparse.ArgumentParser(
         description='上層天気図レポートを生成してGitHubにアップロードする',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 使用例:
   python upper_wind_report.py 2026041200                          # 100hPa GSMのみ FT=0h 1枚
-  python upper_wind_report.py 2026041200 0000 5                   # 100hPa GSMのみ 5枚
+  python upper_wind_report.py 2026041200 0000 5                   # 100hPa GSMのみ 5枚（6h間隔）
+  python upper_wind_report.py 2026041200 0000 12h                 # 12hプリセット（FT=0〜48h）
+  python upper_wind_report.py 2026041200 0000 24h                 # 24hプリセット（FT=0〜120h）
+  python upper_wind_report.py 2026041200 0000 5 --interval 12     # 12h間隔 5枚
   python upper_wind_report.py 2026041200 --ecm                    # 100hPa GSM+ECM FT=0h 1枚
   python upper_wind_report.py 2026041200 --levels 100 50          # 100+50hPa GSMのみ FT=0h
-  python upper_wind_report.py 2026041200 0000 5 --levels 100 50 --ecm  # 複数面・GSM+ECM 5枚
+  python upper_wind_report.py 2026041200 0000 12h --levels 100 50 --ecm
         """
     )
     parser.add_argument('init_time',  type=str, help='初期時刻 YYYYMMDDHH（UTC）')
     parser.add_argument('start_ft',   type=str, nargs='?', default='0000',
                         help='開始予報時間 DDHH形式（デフォルト: 0000）')
-    parser.add_argument('n_steps',    type=int, nargs='?', default=1,
-                        help='作成する枚数（6h間隔、デフォルト: 1）')
+    parser.add_argument('n_steps',    type=str, nargs='?', default='1',
+                        help=f'作成する枚数（デフォルト: 1）またはプリセット名 [{preset_list}]')
+    parser.add_argument('--interval', type=int, default=6,
+                        help='FT間隔 時間数（デフォルト: 6）。プリセット指定時は無視される')
     parser.add_argument('--levels',   type=int, nargs='+', default=[100],
                         help='描画する気圧面 hPa（複数指定可、デフォルト: 100）')
     parser.add_argument('--ecm',      action='store_true',
                         help='ECMWFも実行する（省略時はGSMのみ）')
+    parser.add_argument('--push',     action='store_true',
+                        help='GitHub へ git push する（省略時はローカル保存のみ）')
     return parser.parse_args()
 
 
@@ -87,10 +108,19 @@ def main():
     i_hourZ = int(init_str[8:10])
 
     start_ddhh = int(args.start_ft)
-    n_steps    = args.n_steps
-    start_ft_h = ddhh_to_hours(start_ddhh)
     levels     = args.levels
     with_ecm   = args.ecm
+    raw_steps  = args.n_steps
+    if raw_steps in PRESETS:
+        interval = PRESETS[raw_steps]["interval"]
+        n_steps  = PRESETS[raw_steps]["n_steps"]
+    else:
+        n_steps  = int(raw_steps)
+        interval = args.interval
+
+    start_ft_h = ddhh_to_hours(start_ddhh)
+    end_ft_h   = start_ft_h + (n_steps - 1) * interval
+    ft_list    = [start_ft_h + i * interval for i in range(n_steps)]
 
     script_dir = Path(__file__).parent.resolve()
     output_dir = script_dir / "output"
@@ -99,37 +129,39 @@ def main():
 
     level_label = "+".join(f"{l}hPa" for l in levels)
     model_label = "GSM+ECM" if with_ecm else "GSMのみ"
+    if n_steps == 1:
+        ft_label = f"FT{start_ft_h}"
+    elif interval == 6:
+        ft_label = f"FT{start_ft_h}-{end_ft_h}"
+    else:
+        ft_label = f"FT{start_ft_h}-{end_ft_h}_{interval}h"
 
     print(f"{'='*55}")
     print(f" 上層天気図レポート生成 [{model_label}] [{level_label}]")
-    print(f" 初期時刻: {init_str} UTC  開始FT: {start_ft_h}h  枚数: {n_steps}")
+    print(f" 初期時刻: {init_str} UTC  開始FT: {start_ft_h}h  枚数: {n_steps}  間隔: {interval}h")
     print(f"{'='*55}\n")
 
-    # ---- 気圧面ごとに GSM / ECM を実行 ----
-    for lev in levels:
-        print(f"--- GSM {lev}hPa ---")
-        ok = run_python(
-            f"GSM_100hPa.py {init_str} {args.start_ft} {n_steps} {lev}",
-            script_dir
-        )
-        if not ok:
-            print(f"警告: GSM_100hPa.py (level={lev}) でエラーが発生しました")
-
-        if not with_ecm:
-            print(f"\n--- ECM {lev}hPa: スキップ（--ecm 未指定）---")
-        else:
-            print(f"\n--- ECM {lev}hPa ---")
-            ok = run_python(
-                f"ECM_100hPa.py {init_str} {start_ft_h} {n_steps} {lev}",
-                script_dir
-            )
+    # ---- FT ごとに 1 枚ずつ各スクリプトを実行 ----
+    for ft_h in ft_list:
+        ft_str = f"{hours_to_ddhh(ft_h):04d}"
+        print(f"=== FT={ft_h}h ===")
+        for lev in levels:
+            print(f"  --- GSM {lev}hPa ---")
+            ok = run_python(f"GSM_100hPa.py {init_str} {ft_str} 1 {lev}", script_dir)
             if not ok:
-                print(f"警告: ECM_100hPa.py (level={lev}) でエラーが発生しました")
+                print(f"  警告: GSM_100hPa.py (level={lev}) でエラーが発生しました")
+
+            if not with_ecm:
+                print(f"  --- ECM {lev}hPa: スキップ（--ecm 未指定）---")
+            else:
+                print(f"  --- ECM {lev}hPa ---")
+                ok = run_python(f"ECM_100hPa.py {init_str} {ft_h} 1 {lev}", script_dir)
+                if not ok:
+                    print(f"  警告: ECM_100hPa.py (level={lev}) でエラーが発生しました")
         print()
 
     # ---- 生成PNG を reports/ にコピー ----
     dt_str2 = f"{i_year:04d}{i_month:02d}{i_day:02d}{i_hourZ:02d}"
-    ft_list = [start_ft_h + i * 6 for i in range(n_steps)]
 
     # copied[level] = {"gsm": [(ft_h, fname), ...], "ecm": [...]}
     copied = {lev: {"gsm": [], "ecm": []} for lev in levels}
@@ -192,46 +224,48 @@ def main():
 
         lines += ["---", ""]
 
-    md_path = report_dir / "upper_wind_report.md"
+    md_name = f"upper_wind_report_{ft_label}.md"
+    md_path = report_dir / md_name
     md_path.write_text("\n".join(lines), encoding="utf-8")
-    print(f"\nMDファイル生成: reports/{init_str}/upper_wind_report.md")
+    print(f"\nMDファイル生成: reports/{init_str}/{md_name}")
 
-    # ---- git add → commit → push ----
-    print("\n--- GitHub へアップロード ---")
-    rel_path = f"reports/{init_str}"
-
-    rc = run_git(f"add {rel_path}", script_dir)
-    if rc != 0:
-        print("エラー: git add 失敗")
-        sys.exit(1)
-
-    # ステージングに差分があるか確認（なければコミット不要）
-    staged = subprocess.run("git diff --staged --quiet", shell=True, cwd=script_dir)
-    if staged.returncode == 0:
-        print("変更なし: 既にアップロード済みです（コミット・プッシュをスキップ）")
+    # ---- git add → commit → push（--push 指定時のみ）----
+    if not args.push:
+        print("\nGitHub push はスキップ（--push を付けると実行）")
     else:
-        commit_msg = f"report: 上層天気図レポート追加 {level_label} ({init_str})"
-        rc = run_git(f'commit -m "{commit_msg}"', script_dir)
+        print("\n--- GitHub へアップロード ---")
+        rel_path = f"reports/{init_str}"
+
+        rc = run_git(f"add {rel_path}", script_dir)
         if rc != 0:
-            print("エラー: git commit 失敗")
+            print("エラー: git add 失敗")
             sys.exit(1)
 
-        # PNG が大きいため postBuffer を 500MB に拡張してからプッシュ
-        run_git("config http.postBuffer 524288000", script_dir)
+        staged = subprocess.run("git diff --staged --quiet", shell=True, cwd=script_dir)
+        if staged.returncode == 0:
+            print("変更なし: 既にアップロード済みです（コミット・プッシュをスキップ）")
+        else:
+            commit_msg = f"report: 上層天気図レポート追加 {level_label} {ft_label} ({init_str})"
+            rc = run_git(f'commit -m "{commit_msg}"', script_dir)
+            if rc != 0:
+                print("エラー: git commit 失敗")
+                sys.exit(1)
 
-        rc = run_git("push", script_dir)
-        if rc != 0:
-            print("push 失敗。30秒待ってリトライします...")
-            import time
-            time.sleep(30)
+            run_git("config http.postBuffer 524288000", script_dir)
+
             rc = run_git("push", script_dir)
-        if rc != 0:
-            print("エラー: git push 失敗（手動で 'git push' を実行してください）")
-            sys.exit(1)
+            if rc != 0:
+                print("push 失敗。30秒待ってリトライします...")
+                import time
+                time.sleep(30)
+                rc = run_git("push", script_dir)
+            if rc != 0:
+                print("エラー: git push 失敗（手動で 'git push' を実行してください）")
+                sys.exit(1)
 
     print(f"\n{'='*55}")
     print(f" 完了")
-    print(f" レポート: reports/{init_str}/upper_wind_report.md")
+    print(f" レポート: reports/{init_str}/{md_name}")
     print(f"{'='*55}")
 
 
