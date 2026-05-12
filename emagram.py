@@ -186,7 +186,7 @@ def draw_pt_emagram(fig: plt.Figure, d: dict, dt: datetime, label: str) -> SkewT
 
     skew = SkewT(fig, rotation=0, aspect=120)
     skew.ax.set_xlim(ax_min, ax_max)
-    skew.ax.set_ylim(1020, 300)
+    skew.ax.set_ylim(1020, 100)
 
     # X軸ラベルをケルビン表示に変換
     skew.ax.xaxis.set_major_formatter(
