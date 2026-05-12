@@ -14,12 +14,12 @@ if '--show' not in sys.argv:
     matplotlib.use('Agg')
 
 import matplotlib
-matplotlib.rcParams['font.family'] = ['Hiragino Sans', 'YuGothic', 'DejaVu Sans']
+matplotlib.rcParams['font.family'] = ['Hiragino Sans', 'DejaVu Sans']
 
 import argparse
 import os
 import subprocess
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
@@ -172,9 +172,17 @@ def draw_pt_emagram(fig: plt.Figure, d: dict, dt: datetime, label: str) -> SkewT
     ept  = mpcalc.equivalent_potential_temperature(p, T, Td)
     sept = mpcalc.saturation_equivalent_potential_temperature(p, T)
 
-    ax_min  = 270 * units.K
-    ax_max  = 350 * units.K
-    x_ticks = np.arange(270, 351, 10) * units.K
+    # 全プロファイルの実測値から横軸範囲を自動決定（10K単位・5Kマージン）
+    all_vals = np.concatenate([
+        pt.magnitude, spt.magnitude, ept.magnitude, sept.magnitude
+    ])
+    valid = all_vals[np.isfinite(all_vals)]
+    ax_min_val = int(np.floor((valid.min() - 5) / 10) * 10)
+    ax_max_val = int(np.ceil( (valid.max() + 5) / 10) * 10)
+
+    ax_min  = ax_min_val * units.K
+    ax_max  = ax_max_val * units.K
+    x_ticks = np.arange(ax_min_val, ax_max_val + 1, 10) * units.K
 
     skew = SkewT(fig, rotation=0, aspect=120)
     skew.ax.set_xlim(ax_min, ax_max)
@@ -368,9 +376,10 @@ def main() -> None:
     if args.date:
         dt = datetime.strptime(args.date, '%Y%m%d%H')
     else:
-        now = datetime.now(timezone.utc).replace(tzinfo=None)
-        hour = 0 if now.hour < 12 else 12
-        dt = now.replace(hour=hour, minute=0, second=0, microsecond=0)
+        # 現在UTCから6時間前以前の最新00/12UTCを選ぶ
+        threshold = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=6)
+        hour = 0 if threshold.hour < 12 else 12
+        dt = threshold.replace(hour=hour, minute=0, second=0, microsecond=0)
         print(f'[情報] 直近の観測時刻を使用: {dt.strftime("%Y-%m-%d %HUTC")}')
 
     # 地点の解決
