@@ -1028,6 +1028,131 @@ plt.close()
 
 ---
 
+## JRA-55 再解析データによる天気図作成
+
+JRA-55 は予報値ではなく再解析値であるため、GSM/ECMWF 系スクリプトの `INIT_TIME + FT` ではなく、解析対象時刻 `YYYYMMDDHH` を直接指定する。  
+対応時刻は 00/06/12/18UTC の4回/日。
+
+### 認証情報
+
+JRA-55取得用の ID/password は `jra55_config.ini` に記述する。  
+このファイルは `.gitignore` により GitHub にはアップロードされない。
+
+```ini
+[jra55]
+user = your_user_id
+password = your_password
+```
+
+雛形:
+
+```bash
+cp jra55_config.example.ini jra55_config.ini
+```
+
+### JRA-55総観天気図レポート
+
+`jra55_synop_report.py` は `synop_report.py` のJRA-55版で、複数のPNG天気図を生成し、Markdownに埋め込む。
+
+```bash
+python jra55_synop_report.py DATE [--hour H] [--charts ...] [--push]
+```
+
+| 引数 | 説明 | デフォルト |
+|------|------|----------|
+| `DATE` | `YYYYMMDD` または `YYYYMMDDHH`（UTC） | 必須 |
+| `--hour H` | `YYYYMMDD` 指定時のUTC時刻。`0/6/12/18` のみ | `0` |
+| `--charts` | `jet fax57 fax78 ept srf` から作成対象を指定 | 全図 |
+| `--data-dir` | JRA-55 NetCDF保存先 | `./data/Jra55` |
+| `--output-dir` | 一時PNG保存先 | `./output` |
+| `--config` | 認証設定ファイル | `./jra55_config.ini` |
+| `--push` | 生成したMarkdown/PNGとスクリプト変更をGitHubへpush | なし |
+
+例:
+
+```bash
+python jra55_synop_report.py 19590915
+python jra55_synop_report.py 1959091512 --charts jet srf
+python jra55_synop_report.py 19590915 --push
+```
+
+生成される図:
+
+| chart | 内容 |
+|-------|------|
+| `jet` | 300hPa 等風速・発散・非地衡風 |
+| `fax57` | 500hPa気温・700hPa湿数 |
+| `fax78` | 700hPa発散・850hPa気温・850hPa風 |
+| `ept` | 850hPa相当温位・850hPa風 |
+| `srf` | 海面更正気圧・地上風・地上気温 |
+
+出力先:
+
+```text
+reports/{YYYYMMDDHH}-jra55-synop/jra55_synop_report_{YYYYMMDDHH}.md
+reports/{YYYYMMDDHH}-jra55-synop/{YYYYMMDDHH}_JRA55_*.png
+```
+
+### JRA-55 300hPaジェット単図
+
+300hPaジェット・上層発散のみを作成する場合:
+
+```bash
+python JRA55_JetDivergence.py YYYYMMDDHH
+python JRA55_JetDivergence.py 1961071518 --level 300
+```
+
+レポート化する場合:
+
+```bash
+python jra55_jet_report.py 1961071518
+python jra55_jet_report.py 1961071518 --push
+```
+
+### JRA-55内部スクリプト
+
+| スクリプト | 役割 |
+|-----------|------|
+| `JRA55_JetDivergence.py` | 300hPaなど任意気圧面の高度・等風速・発散・非地衡風を描画 |
+| `JRA55_SynopCharts.py` | `jet/fax57/fax78/ept/srf` の各PNGを生成 |
+| `jra55_jet_report.py` | 300hPaジェット単図のMarkdownレポート生成 |
+| `jra55_synop_report.py` | JRA-55総観天気図セットのMarkdownレポート生成 |
+
+### 使用するJRA-55データ
+
+| 図 | 主な変数 | ファイル種別 |
+|----|----------|------------|
+| `jet` | `HGT`, `UGRD`, `VGRD`, `RELD` 300hPa | 等圧面・月別 |
+| `fax57` | `TMP` 500hPa, `TMP/RH` 700hPa | 等圧面・月別 |
+| `fax78` | `RELD` 700hPa, `TMP/UGRD/VGRD` 850hPa | 等圧面・月別 |
+| `ept` | `TMP/RH/UGRD/VGRD` 850hPa | 等圧面・月別 |
+| `srf` | `PRMSL_msl`, `UGRD_fhg`, `VGRD_fhg`, `TMP_fhg` | 地上・年別 |
+
+RISH上の代表的なパス:
+
+```text
+https://database.rish.kyoto-u.ac.jp/arch/jra55/data/isobaric_1.25d/HGT/YYYY/HGT_YYYYMM.nc
+https://database.rish.kyoto-u.ac.jp/arch/jra55/data/isobaric_1.25d/TMP/YYYY/TMP_YYYYMM.nc
+https://database.rish.kyoto-u.ac.jp/arch/jra55/data/isobaric_1.25d/RH/YYYY/RH_YYYYMM.nc
+https://database.rish.kyoto-u.ac.jp/arch/jra55/data/isobaric_1.25d/surf/PRMSL/PRMSL_msl_YYYY.nc
+```
+
+ローカル保存:
+
+```text
+data/Jra55/
+```
+
+注意:
+
+- 初回実行では月別・年別NetCDFを自動取得するため時間がかかる。
+- 取得済みファイルは `data/Jra55/` から再利用される。
+- `data/Jra55/`, `output/`, `.cache/`, `.matplotlib/`, `jra55_config.ini` はGit管理対象外。
+- JRA-55の地上変数はファイル内変数名が `PRMSL_msl`, `UGRD_fhg` のようにサフィックス付きである。
+- 1959年9月15日00UTCのテスト出力例は `reports/1959091500-jra55-synop/` にある。
+
+---
+
 ## 更新履歴
 
 | 日付 | 内容 |
@@ -1063,3 +1188,4 @@ plt.close()
 | 2026-05-10 | `run_all_charts.sh` のプリセット名を `key` → `12h`/`24h` に改称、`24h` プリセット（FT=0〜120h）を追加 |
 | 2026-05-10 | マニュアル（README.md・tenkizu.md）を再編成: レポートスクリプトを前方に移動、引数仕様を最新化 |
 | 2026-05-12 | `emagram.py` 新規作成: Wyoming高層ゾンデデータによるエマグラム・温位エマグラム描画。石垣島デフォルト・全国13地点対応。`--report`/`--push` でMarkdownレポート+GitHub push。温位エマグラム横軸自動スケール・高度上限100hPa |
+| 2026-05-13 | JRA-55再解析データ対応を追加。`JRA55_JetDivergence.py`・`JRA55_SynopCharts.py`・`jra55_jet_report.py`・`jra55_synop_report.py` により、300hPa単図と総観天気図セットのMarkdownレポート生成・GitHub pushに対応 |
