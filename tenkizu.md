@@ -5,7 +5,7 @@
 黒良さんのNote をベースに整備した天気図作成ツール。  
 GSM（全球モデル）および ECMWF GRIB2 データをダウンロードし、  
 各種高層・地上天気図を PNG 出力する。GSM/ECMWF 合計 16 種類の描画スクリプトと  
-一括生成スクリプト・PowerPoint 自動生成スクリプト・レポート生成スクリプト5本を収録。
+一括生成スクリプト・PowerPoint 自動生成スクリプト・レポート生成スクリプト5本・エマグラム描画スクリプト1本を収録。
 
 **プロジェクトパス**: `/Users/masahiro/projects/tenkizu/`  
 **GitHubリポジトリ**: `https://github.com/masauehr/tenkizu`  
@@ -48,6 +48,7 @@ GSM（全球モデル）および ECMWF GRIB2 データをダウンロードし�
 | `jet_front_ave_report.py` | 複数初期時刻（12h間隔で遡る）のFT=0h解析値を平均した天気図を生成。梅雨入り等の平均場把握に有効。出力先: `reports/{init_str}-ave/` |
 | `upper_wind_report.py` | 指定気圧面の上層天気図を生成し `reports/` に MD+PNG をまとめる。`--push` で GitHub push |
 | `synop_report.py` | 総観天気図（Jet300hPa・Fax57・Fax78・EPT850hPa・地上気圧）のレポートを生成。`--ecm` でECM追加、`--charts` で種別指定、`--push` で GitHub push |
+| `emagram.py` | **エマグラム・温位エマグラム描画**。Wyoming高層ゾンデデータを取得し、エマグラム（CAPE/CIN・ホドグラフ付き）と温位エマグラム（θ/θe/θes/θw）をPNG出力。`--report` でMarkdownレポート生成、`--push` でGitHub push |
 | `make_pptx.py` | PNG → PowerPoint 自動生成（主要7グループ） |
 | `make_pptx2.py` | PNG → PowerPoint 自動生成（残り3グループ） |
 | `samples/` | 全種別サンプルPNG 14枚 + PowerPoint 1ファイル（GitHub閲覧用） |
@@ -380,6 +381,90 @@ python synop_report.py 2026041200 0000 5 --ecm --push          # GSM+ECM 5枚 �
 
 > **注意**: Jet の GSM版（`GSM_Jet300hPa.py`）と ECM版（`ECM_100hPa.py level=300`）は描画内容が異なる。  
 > GSM版は Isotach + 非地衡風矢羽、ECM版は等高度線 + 風矢羽。
+
+---
+
+### エマグラム・温位エマグラム描画（emagram.py）
+
+Wyoming Upper Air データベースから高層ゾンデ観測を取得し、エマグラムと温位エマグラムをPNG出力するスクリプト。`--report` でMarkdownレポートを生成し、`--push` でGitHubへ自動pushできる。
+
+**エマグラム描画要素:**
+
+| 要素 | 内容 |
+|------|------|
+| 温度・露点温度 | 赤線・緑線 |
+| 風矢羽 | 全層 |
+| パーセルプロファイル | 850hPa以下で最大相当温位の気塊を持ち上げ |
+| CAPE/CIN | シェード（赤/青） |
+| 乾燥断熱線・湿潤断熱線・等混合比線 | 補助線 |
+| ホドグラフ | 右上インセット（高度カラー） |
+
+**温位エマグラム描画要素:**
+
+| 要素 | 内容 |
+|------|------|
+| θ（温位） | 黒線 |
+| θe（相当温位） | 緑線 |
+| θes（飽和相当温位） | 赤線 |
+| θw（飽和温位） | 紫線 |
+| 等飽和混合比線 | 青点線（横軸:温位） |
+| 横軸範囲 | データの実測値から自動決定（10K単位・5Kマージン） |
+| 高度上限 | 100hPa |
+
+```bash
+python emagram.py [--date YYYYMMDDHH] [--site 地点名] [--id STATION_ID]
+                  [--mode {both,emagram,pt}] [--report] [--push] [--no-save] [--show]
+```
+
+| 引数 | 説明 | デフォルト |
+|------|------|-----------|
+| `--date` | 観測日時（UTC）例: `2024051200` | 現在UTC-6h以前の直近00/12UTC |
+| `--site` | 地点名 | 石垣島 |
+| `--id` | WMO地点番号（`--site` より優先） | — |
+| `--mode` | `both` / `emagram` / `pt` | `both` |
+| `--report` | `reports/{tag}/` にPNG+MD生成 | なし |
+| `--push` | git add → commit → push（`--report` 必須） | なし |
+| `--no-save` | PNG保存スキップ（`--report` 時は無効） | なし |
+| `--show` | 画面表示（GUI必要） | なし |
+
+**対応地点（`--site` に指定する地点名）:**
+
+| 地点 | WMO番号 | 地域 |
+|------|---------|------|
+| 石垣島（デフォルト） | 47918 | 南西諸島 |
+| 南大東島 | 47945 | 南西諸島 |
+| 名瀬 | 47909 | 南西諸島 |
+| 鹿児島 | 47827 | 九州 |
+| 福岡 | 47807 | 九州 |
+| 潮岬 | 47778 | 近畿 |
+| 館野 | 47646 | 関東 |
+| 八丈島 | 47678 | 関東 |
+| 輪島 | 47600 | 北陸 |
+| 秋田 | 47582 | 東北 |
+| 稚内 | 47401 | 北海道 |
+| 花蓮 | 46699 | 台湾※ |
+| 台北 | 46692 | 台湾※ |
+
+※台湾地点はWyoming Upper Airデータベース未収録のため取得不可の場合あり
+
+```bash
+python emagram.py                                      # 石垣島 直近時刻 両図
+python emagram.py --date 2024051200                    # 石垣島 指定日時
+python emagram.py --site 南大東島                       # 南大東島 直近時刻
+python emagram.py --site 館野 --mode emagram           # 館野 エマグラムのみ
+python emagram.py --site 名瀬 --mode pt                # 名瀬 温位エマグラムのみ
+python emagram.py --site 石垣島 --report               # レポート生成のみ
+python emagram.py --site 石垣島 --report --push        # レポート生成 + GitHub push
+python emagram.py --id 47807 --report --push           # WMO番号直接指定でpush
+```
+
+**生成物（`--report` 指定時）:**
+- `reports/{YYYYMMDDHH}_{station_id}/emagram_report.md`
+- `reports/{YYYYMMDDHH}_{station_id}/{tag}_emagram.png`
+- `reports/{YYYYMMDDHH}_{station_id}/{tag}_pt_emagram.png`
+
+**データソース:** Wyoming Upper Air (https://weather.uwyo.edu/)  
+**必要ライブラリ:** `siphon`（`pip install siphon` でインストール）
 
 ---
 
@@ -977,3 +1062,4 @@ plt.close()
 | 2026-05-10 | `synop_report.py` に `--charts` オプション追加（描画種別の個別選択。旧 `--keys` から改称） |
 | 2026-05-10 | `run_all_charts.sh` のプリセット名を `key` → `12h`/`24h` に改称、`24h` プリセット（FT=0〜120h）を追加 |
 | 2026-05-10 | マニュアル（README.md・tenkizu.md）を再編成: レポートスクリプトを前方に移動、引数仕様を最新化 |
+| 2026-05-12 | `emagram.py` 新規作成: Wyoming高層ゾンデデータによるエマグラム・温位エマグラム描画。石垣島デフォルト・全国13地点対応。`--report`/`--push` でMarkdownレポート+GitHub push。温位エマグラム横軸自動スケール・高度上限100hPa |

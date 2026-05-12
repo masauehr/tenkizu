@@ -14,8 +14,10 @@ GSM（全球モデル）GRIB2データを京都大学RISHサーバーからダ�
 |--------|------|
 | `kurora_tenkizu.py` | **天気図描画メインスクリプト**。引数でinit_time/FT/気圧面を指定してPNG出力 |
 | `download_gsm.py` | **GSMデータダウンロードスクリプト**。RISHサーバーから全球GSM GRIB2を取得 |
+| `emagram.py` | **エマグラム・温位エマグラム描画スクリプト**。Wyoming高層ゾンデデータを取得してPNG出力・レポート生成 |
 | `run_pipeline.sh` | **パイプライン**。ダウンロード→描画を一括実行 |
 | `data_gsm/` | GSM GRIB2データ保存先（Gitから除外） |
+| `output/emagram/` | エマグラムPNG出力先（Gitから除外） |
 | `output/` | 生成天気図PNG保存先（Gitから除外） |
 
 ---
@@ -40,7 +42,7 @@ Z__C_RJTD_{YYYYMMDD}{HH}0000_GSM_GPV_Rgl_FD{DDHH}_grib2.bin
 ## 実行環境
 
 - **Python環境**: `conda activate met_env_310`（Python 3.10）
-- **必要ライブラリ**: pygrib, xarray, metpy, matplotlib, cartopy, requests, beautifulsoup4
+- **必要ライブラリ**: pygrib, xarray, metpy, matplotlib, cartopy, requests, beautifulsoup4, siphon
 - **PROJ_LIBパス**: `/opt/anaconda3/envs/met_env_310/share/proj`（kurora_tenkizu.py内で設定済み）
 
 ---
@@ -64,6 +66,41 @@ python download_gsm.py [--date YYYYMMDD] [--hour {0,12}]
                        [--start YYYYMMDD] [--end YYYYMMDD]
                        [--ft FT [FT ...]]
 ```
+
+### emagram.py
+
+```
+python emagram.py [--date YYYYMMDDHH] [--site 地点名] [--id STATION_ID]
+                  [--mode {both,emagram,pt}] [--report] [--push]
+                  [--no-save] [--show]
+```
+
+- `--date`: 観測日時（UTC）。省略時は現在UTCから6時間前以前の直近00/12UTC
+- `--site`: 地点名（デフォルト: 石垣島）
+- `--id`: WMO地点番号（`--site` より優先）
+- `--mode`: `both`=両方（デフォルト）/ `emagram`=エマグラムのみ / `pt`=温位エマグラムのみ
+- `--report`: `reports/{YYYYMMDDHH}_{station_id}/` にPNG+Markdownレポートを生成
+- `--push`: `--report` と併用。git add → commit → push まで自動実行
+
+**対応地点:**
+
+| 地点 | WMO番号 | 地域 |
+|------|---------|------|
+| 石垣島（デフォルト） | 47918 | 南西諸島 |
+| 南大東島 | 47945 | 南西諸島 |
+| 名瀬 | 47909 | 南西諸島 |
+| 鹿児島 | 47827 | 九州 |
+| 福岡 | 47807 | 九州 |
+| 潮岬 | 47778 | 近畿 |
+| 館野 | 47646 | 関東 |
+| 八丈島 | 47678 | 関東 |
+| 輪島 | 47600 | 北陸 |
+| 秋田 | 47582 | 東北 |
+| 稚内 | 47401 | 北海道 |
+| 花蓮 | 46699 | 台湾※ |
+| 台北 | 46692 | 台湾※ |
+
+※台湾地点はWyomingデータベース未収録のため取得不可の場合あり
 
 ---
 
@@ -94,3 +131,4 @@ python download_gsm.py [--date YYYYMMDD] [--hour {0,12}]
 - `kurora_tenkizu.ipynb` → `kurora_tenkizu.py` に変換（上原政博）
 - コマンドライン引数対応・PNG出力対応に改修（20260408 上原政博）
 - `download_gsm.py` 新規作成（20260408 上原政博）
+- `emagram.py` 新規作成（20260512 上原政博）: Wyoming高層ゾンデデータを使ったエマグラム・温位エマグラム描画。地点選択・レポート生成・GitHub push 対応
