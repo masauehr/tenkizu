@@ -1,10 +1,14 @@
 # 認証情報・機密ファイル
 .env
+jra55_config.ini
 *.key
 *.pem
 
 data_gsm/
+data/Jra55/
 output/
+.cache/
+.matplotlib/
 __pycache__/
 *.pyc
 .DS_Store
