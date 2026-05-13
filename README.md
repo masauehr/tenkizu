@@ -10,10 +10,11 @@ GSM（全球モデル）・ECMWF GRIB2 データから各種高層・地上天�
 
 ## 概要
 
-- **対応データ**: GSM（RISH、過去全期間無償）・ECMWF（Open Data、最新5日分のみ無償）・Wyoming高層ゾンデ
-- **描画スクリプト**: 16種類（GSM 10本・ECM 6本）＋エマグラム1本
-- **レポート生成**: 5本（Markdown+PNG → `reports/` に保存、`--push` でGitHub push）
-- **実行環境**: Python 3.10（conda 環境 `met_env_310`）
+- **対応データ**: GSM（RISH、過去全期間無償）・ECMWF（Open Data、最新5日分のみ無償）・JRA-55 再解析（RISH、認証必要）・Wyoming高層ゾンデ
+- **天気図スクリプト**: 18種類（GSM 10本・ECM 6本・JRA-55 2本）
+- **エマグラムスクリプト**: 3種類（Wyoming ゾンデ・GSM/ECM GRIB2・JRA-55 NetCDF）
+- **レポート生成**: 7本（Markdown+PNG → `reports/` に保存、`--push` でGitHub push）
+- **実行環境**: Python 3.10（conda 環境 `met_env_310`：GSM/ECM系 / `met_env`：JRA-55系）
 
 ---
 
@@ -22,6 +23,8 @@ GSM（全球モデル）・ECMWF GRIB2 データから各種高層・地上天�
 ```
 tenkizu/
 ├── emagram.py              # エマグラム・温位エマグラム（Wyoming高層ゾンデ）
+├── GRIB2_Emagram.py        # エマグラム・温位エマグラム（GSM/ECM GRIB2）
+├── JRA55_Emagram.py        # エマグラム・温位エマグラム（JRA-55 NetCDF）
 ├── GSM_tenkizu500hPa.py    # GSM 500hPa等高度線・渦度
 ├── GSM_QVector850hPa.py    # GSM 850hPa Qベクター
 ├── GSM_Jet300hPa.py        # GSM 300hPa ジェット
@@ -38,23 +41,30 @@ tenkizu/
 ├── ECM_Fax78.py            # ECMWF FAX78
 ├── ECM_SurfacePressure.py  # ECMWF 地上気圧（±可降水量/積算降水量）
 ├── ECM_100hPa.py           # ECMWF 任意気圧面 等高度線・ISOTAC・風矢羽
-├── jet_front_report.py     # レポート: 上層風・断面図・EPT850・地上気圧
+├── JRA55_SynopCharts.py    # JRA-55 総観天気図セット（jet/fax57/fax78/ept/srf）
+├── JRA55_JetDivergence.py  # JRA-55 300hPa ジェット・上層発散
+├── jet_front_report.py     # レポート: 上層風・断面図・EPT850・地上気圧（GSM/ECM）
 ├── jet_front_wide_report.py# レポート: 広域上層風＋850hPa（--avg_steps 対応）
 ├── jet_front_ave_report.py # レポート: 複数初期時刻FT=0h時間平均（梅雨入り判断）
 ├── upper_wind_report.py    # レポート: 上層天気図（任意気圧面）
-├── synop_report.py         # レポート: 総観天気図（Jet・Fax57・Fax78・EPT・地上）
+├── synop_report.py         # レポート: 総観天気図（GSM/ECM）
+├── jra55_synop_report.py   # レポート: 総観天気図（JRA-55）
+├── jra55_jet_report.py     # レポート: ジェット・上層発散（JRA-55）
 ├── run_gsm_auto.py         # GSM系: 最新データ自動検索・一括生成
 ├── run_ecm_auto.py         # ECM系: 最新データ自動検索・一括生成
 ├── run_all_charts.sh       # 全16スクリプト一括実行
 ├── make_pptx.py            # PNG → PowerPoint 自動生成（主要7グループ）
 ├── make_pptx2.py           # PNG → PowerPoint 自動生成（補完3グループ）
 ├── download_gsm.py         # GSM GRIB2事前ダウンロード専用
+├── jra55_config.ini        # JRA-55 認証設定（Gitから除外）
+├── jra55_config.example.ini# JRA-55 認証設定の雛形
 ├── kurora_tenkizu.py       # 旧メイン版（互換維持）
 ├── run_pipeline.sh         # 旧パイプライン
 ├── samples/                # 各種別サンプルPNG（GitHub閲覧用）
 ├── reports/                # レポート保存先
 ├── data_gsm/               # GSM GRIB2データ（Gitから除外）
 ├── data/ecm/               # ECMWF GRIB2データ（Gitから除外）
+├── data/Jra55/             # JRA-55 NetCDFキャッシュ（Gitから除外）
 └── output/                 # 生成天気図PNG（Gitから除外）
 ```
 
@@ -62,11 +72,29 @@ tenkizu/
 
 ## セットアップ
 
+### GSM/ECM 系（`met_env_310`）
+
 ```bash
 conda create -n met_env_310 python=3.10
 conda activate met_env_310
 conda install -c conda-forge pygrib xarray metpy matplotlib cartopy requests
 pip install beautifulsoup4 python-pptx siphon
+```
+
+### JRA-55 系（`met_env`）
+
+```bash
+conda create -n met_env python=3.10
+conda activate met_env
+conda install -c conda-forge xarray metpy matplotlib cartopy requests netcdf4
+pip install siphon
+```
+
+### JRA-55 認証設定
+
+```bash
+cp jra55_config.example.ini jra55_config.ini
+# jra55_config.ini を編集して user/password を設定
 ```
 
 ---
@@ -355,8 +383,11 @@ python download_gsm.py --date 20171210 --ft 0000 0012 0100
 | スクリプト | 出力パス |
 |-----------|--------|
 | GSM/ECM 天気図スクリプト | `output/{YYYYMMDDHH}_FT{FFF}h_{種別}.png` |
+| JRA-55 天気図スクリプト | `output/{YYYYMMDDHH}_JRA55_{種別}.png` |
 | `emagram.py`（通常） | `output/emagram/{YYYYMMDDHH}_{station_id}_emagram.png` |
 | `emagram.py`（`--report`） | `reports/{YYYYMMDDHH}_{station_id}/emagram_report.md` + PNG |
+| `GRIB2_Emagram.py` | `reports/{init}_{MODEL}_emagram_{FT範囲}_lat*_lon*/` |
+| `JRA55_Emagram.py` | `reports/{init}_JRA55_emagram_{FT範囲}_lat*_lon*/` |
 | レポートスクリプト | `reports/{init_str}/{スクリプト名}_{FTラベル}.md` + PNG |
 
 ---
@@ -486,6 +517,8 @@ python make_pptx2.py INIT_TIME  # 補完3グループ（不安定域・断面図
 | 2026-05-10 | 時間プリセット（`12h`/`24h`）・`--interval`・`--charts` オプション追加 |
 | 2026-05-12 | `emagram.py` 追加（Wyoming高層ゾンデ、エマグラム・温位エマグラム、`--report`/`--push` 対応） |
 | 2026-05-13 | JRA-55対応を追加（`JRA55_JetDivergence.py`・`JRA55_SynopCharts.py`・`jra55_jet_report.py`・`jra55_synop_report.py`、認証設定ファイル、Markdownレポート生成） |
+| 2026-05-13 | `JRA55_Emagram.py` 追加（JRA-55 NetCDFから任意格子点のエマグラム・温位エマグラム） |
+| 2026-05-13 | `GRIB2_Emagram.py` 追加（GSM/ECM GRIB2から任意格子点のエマグラム・温位エマグラム） |
 
 ---
 
@@ -498,3 +531,202 @@ python make_pptx2.py INIT_TIME  # 補完3グループ（不安定域・断面図
 - Wyoming Upper Air: https://weather.uwyo.edu/upperair/sounding.html
 - ECMWF Open Data: https://www.ecmwf.int/en/forecasts/datasets/open-data
 - Copernicus CDS（過去ECMWFデータ）: https://cds.climate.copernicus.eu
+
+---
+
+## JRA-55 エマグラム・温位エマグラム
+
+`JRA55_Emagram.py` は、JRA-55 等圧面 NetCDF から任意地点のエマグラムと温位エマグラムを作成するスクリプト。  
+`JRA55_SynopCharts.py` と同じ RISH JRA-55 アーカイブ、認証設定、ローカルキャッシュ構造を使用する。
+
+### 作業結果
+
+- `JRA55_Emagram.py` を追加。
+- 初期値 `YYYYMMDDHH` と FT を指定して、`valid_time = init_time + FT` の JRA-55 プロファイルを描画する。
+- `--start-ft`、`--steps`、`--interval` で複数 FT を連続作図できる。
+- 各 FT について、エマグラムと温位エマグラムを同時作成する。
+- デフォルトで PNG と Markdown レポートを同じディレクトリへ保存する。
+- Markdown には各 FT のエマグラムと温位エマグラムを相対パスで埋め込む。
+- `--push` 指定時は生成ディレクトリを `git add`、`git commit`、`git push` する。
+- 地点は既定で JRA-55 1.25度格子の最近傍を使用する。格子完全一致のみ許可する場合は `--method exact` を使う。
+- 露点温度は `TMP` と `RH` から MetPy で計算する。
+- 温位エマグラムには、温位、相当温位、飽和相当温位、露点温度から求めた温位、風を描画する。
+- 図タイトルは2行表示とし、1行目に図種別・FT・初期値、2行目に有効時刻・指定地点・使用格子点を表示する。
+- エマグラムの凡例は図内左端の700hPa付近に表示する。
+- 温位エマグラムの凡例は図内左上に表示し、日本語名で説明する。
+
+### データ取得
+
+使用する月別等圧面データ:
+
+| 変数 | 内容 | 保存先 |
+|------|------|--------|
+| `TMP` | 気温 | `data/Jra55/TMP/YYYY/TMP_YYYYMM.nc` |
+| `RH` | 相対湿度 | `data/Jra55/RH/YYYY/RH_YYYYMM.nc` |
+| `UGRD` | 東西風 | `data/Jra55/UGRD/YYYY/UGRD_YYYYMM.nc` |
+| `VGRD` | 南北風 | `data/Jra55/VGRD/YYYY/VGRD_YYYYMM.nc` |
+| `HGT` | ジオポテンシャル高度 | `data/Jra55/HGT/YYYY/HGT_YYYYMM.nc` |
+
+対象月のファイルが `data/Jra55/` に存在しない場合は、RISH JRA-55 アーカイブから自動ダウンロードする。  
+認証情報は `jra55_config.ini` の `[jra55]` セクション、または環境変数 `JRA55_USER` / `JRA55_PASSWORD` を使用する。
+
+### 実行方法
+
+単一 FT:
+
+```bash
+/opt/anaconda3/envs/met_env/bin/python JRA55_Emagram.py 1959091500 --ft 12 --lat 25 --lon 125
+```
+
+DDHH形式の FT 指定:
+
+```bash
+/opt/anaconda3/envs/met_env/bin/python JRA55_Emagram.py 1959091500 --ft 0012 --lat 25 --lon 125
+/opt/anaconda3/envs/met_env/bin/python JRA55_Emagram.py 1959091500 --ft 0100 --lat 25 --lon 125
+```
+
+複数 FT:
+
+```bash
+/opt/anaconda3/envs/met_env/bin/python JRA55_Emagram.py 1959091500 --start-ft 12 --steps 2 --interval 12 --lat 25 --lon 125
+```
+
+GitHubへpush:
+
+```bash
+/opt/anaconda3/envs/met_env/bin/python JRA55_Emagram.py 1959091500 --start-ft 12 --steps 2 --interval 12 --lat 25 --lon 125 --push
+```
+
+有効時刻を直接指定する旧形式:
+
+```bash
+/opt/anaconda3/envs/met_env/bin/python JRA55_Emagram.py --valid-time 1959091512 --lat 25 --lon 125
+```
+
+### 出力
+
+`--output-dir` を指定しない場合:
+
+```text
+reports/{init}_JRA55_emagram_{FT範囲}_lat{lat}_lon{lon}/
+```
+
+出力例:
+
+```text
+reports/1959091500_JRA55_emagram_FT012-024h_12h_lat25.00_lon125.00/
+├── 1959091500_FT012h_JRA55_emagram_lat25.00_lon125.00.png
+├── 1959091500_FT012h_JRA55_pt_emagram_lat25.00_lon125.00.png
+├── 1959091500_FT024h_JRA55_emagram_lat25.00_lon125.00.png
+├── 1959091500_FT024h_JRA55_pt_emagram_lat25.00_lon125.00.png
+└── jra55_emagram_report_FT012-024h.md
+```
+
+### テスト済みケース
+
+宮古島付近（北緯25度、東経125度）:
+
+```bash
+/opt/anaconda3/envs/met_env/bin/python JRA55_Emagram.py 1959091500 --ft 12 --lat 25 --lon 125
+/opt/anaconda3/envs/met_env/bin/python JRA55_Emagram.py 1959091500 --ft 24 --lat 25 --lon 125
+/opt/anaconda3/envs/met_env/bin/python JRA55_Emagram.py 1959091512 --ft 0 --lat 25 --lon 125
+```
+
+---
+
+## GSM/ECMWF GRIB2 エマグラム・温位エマグラム
+
+`GRIB2_Emagram.py` は、GSM または ECMWF の GRIB2 ファイルから任意地点のエマグラムと温位エマグラムを作成するスクリプト。  
+GSM/ECM のデータ取得方法、ファイル名、保存先は既存の `GSM_*.py`、`ECM_*.py` と同じ規則に合わせている。
+
+### 作業結果
+
+- `GRIB2_Emagram.py` を追加。
+- `gsm` / `ecm` を第1引数で指定できる。
+- 初期値 `YYYYMMDDHH` と FT を指定し、指定地点の最近傍格子から鉛直プロファイルを抽出する。
+- `--start-ft`、`--steps`、`--interval` で複数 FT を連続作図できる。
+- 各 FT について、エマグラムと温位エマグラムを同時作成する。
+- PNG と Markdown レポートをデフォルトで同じディレクトリへ保存する。
+- Markdown には各 FT のエマグラムと温位エマグラムを相対パスで埋め込む。
+- `--push` 指定時は生成ディレクトリを `git add`、`git commit`、`git push` する。
+- GRIB2 ファイルがローカルにない場合は既存スクリプトと同じ取得先から自動ダウンロードを試みる。
+- 気温、風、高度は100hPaまで描画する。
+- 相対湿度が300hPa程度までしかない GRIB2 では、露点温度、CAPE/CIN、相当温位、露点由来の温位は湿度が存在する層だけで計算・描画する。
+
+### データ取得
+
+GSM:
+
+```text
+data_gsm/Z__C_RJTD_YYYYMMDDHH0000_GSM_GPV_Rgl_FDdddd_grib2.bin
+```
+
+ファイルがない場合は RISH の GSM GPV アーカイブから取得を試みる。
+
+ECMWF:
+
+```text
+data/ecm/YYYYMMDDHH0000-{FT}h-oper-fc.grib2
+data/ecm/YYYYMMDDHH0000-{FT}h-scda-fc.grib2
+```
+
+00/12UTC は `oper`、06/18UTC は `scda` として ECMWF Open Data から取得を試みる。  
+ECMWF Open Data は原則として直近データ向けで、古い過去事例は別途 CDS 等で取得した GRIB2 を `data/ecm/` に配置する必要がある。
+
+### 実行方法
+
+GSM 単一 FT:
+
+```bash
+/opt/anaconda3/envs/met_env/bin/python GRIB2_Emagram.py gsm 2026041200 --ft 12 --lat 25 --lon 125
+```
+
+GSM 複数 FT:
+
+```bash
+/opt/anaconda3/envs/met_env/bin/python GRIB2_Emagram.py gsm 2026041200 --start-ft 0 --steps 5 --interval 6 --lat 25 --lon 125
+```
+
+ECMWF 単一 FT:
+
+```bash
+/opt/anaconda3/envs/met_env/bin/python GRIB2_Emagram.py ecm 2026041200 --ft 24 --lat 25 --lon 125
+```
+
+ECMWF 複数 FT:
+
+```bash
+/opt/anaconda3/envs/met_env/bin/python GRIB2_Emagram.py ecm 2026041200 --start-ft 0 --steps 3 --interval 6 --lat 25 --lon 125
+```
+
+GitHubへpush:
+
+```bash
+/opt/anaconda3/envs/met_env/bin/python GRIB2_Emagram.py gsm 2026041200 --start-ft 0 --steps 5 --lat 25 --lon 125 --push
+```
+
+### 出力
+
+`--output-dir` を指定しない場合:
+
+```text
+reports/{init}_{MODEL}_emagram_{FT範囲}_lat{lat}_lon{lon}/
+```
+
+出力例:
+
+```text
+reports/2026041200_GSM_emagram_FT000-024h_6h_lat25.00_lon125.00/
+├── 2026041200_FT000h_GSM_emagram_lat25.00_lon125.00.png
+├── 2026041200_FT000h_GSM_pt_emagram_lat25.00_lon125.00.png
+├── 2026041200_FT006h_GSM_emagram_lat25.00_lon125.00.png
+├── 2026041200_FT006h_GSM_pt_emagram_lat25.00_lon125.00.png
+└── gsm_emagram_report_FT000-024h.md
+```
+
+### 注意
+
+- `GRIB2_Emagram.py` は `pygrib` を使用するため、実行環境は `/opt/anaconda3/envs/met_env/bin/python` を想定する。
+- 相対湿度が上層に存在しないデータでも、気温・風・高度は100hPaまで描画する。
+- 露点温度と水蒸気を使う診断量は、相対湿度が存在する気圧面だけで計算する。
+- 実GRIB2ファイルが手元にない環境では、構文とヘルプ表示のみ確認済み。実描画は対象データ配置後に実行する。
