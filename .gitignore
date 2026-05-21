@@ -5,6 +5,7 @@ jra55_config.ini
 *.pem
 
 data_gsm/
+data/ecm/
 data/Jra55/
 output/
 .cache/

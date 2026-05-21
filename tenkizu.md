@@ -49,6 +49,8 @@ GSM（全球モデル）および ECMWF GRIB2 データをダウンロードし�
 | `upper_wind_report.py` | 指定気圧面の上層天気図を生成し `reports/` に MD+PNG をまとめる。`--push` で GitHub push |
 | `synop_report.py` | 総観天気図（Jet300hPa・Fax57・Fax78・EPT850hPa・地上気圧）のレポートを生成。`--ecm` でECM追加、`--charts` で種別指定、`--push` で GitHub push |
 | `emagram.py` | **エマグラム・温位エマグラム描画**。Wyoming高層ゾンデデータを取得し、エマグラム（CAPE/CIN・ホドグラフ付き）と温位エマグラム（θ/θe/θes/θw）をPNG出力。`--report` でMarkdownレポート生成、`--push` でGitHub push |
+| `GRIB2_Emagram.py` | GSM/ECMWFのGRIB2から任意緯度・経度の格子点エマグラム・温位エマグラムを作図。`--start-ft`/`--steps`/`--interval` で複数FTを連続作図。`--push` でGitHub push |
+| `JRA55_Emagram.py` | JRA-55 NetCDFから任意緯度・経度の格子点エマグラム・温位エマグラムを作図。`--push` でGitHub push |
 | `make_pptx.py` | PNG → PowerPoint 自動生成（主要7グループ） |
 | `make_pptx2.py` | PNG → PowerPoint 自動生成（残り3グループ） |
 | `samples/` | 全種別サンプルPNG 14枚 + PowerPoint 1ファイル（GitHub閲覧用） |
@@ -1189,3 +1191,5 @@ data/Jra55/
 | 2026-05-10 | マニュアル（README.md・tenkizu.md）を再編成: レポートスクリプトを前方に移動、引数仕様を最新化 |
 | 2026-05-12 | `emagram.py` 新規作成: Wyoming高層ゾンデデータによるエマグラム・温位エマグラム描画。石垣島デフォルト・全国13地点対応。`--report`/`--push` でMarkdownレポート+GitHub push。温位エマグラム横軸自動スケール・高度上限100hPa |
 | 2026-05-13 | JRA-55再解析データ対応を追加。`JRA55_JetDivergence.py`・`JRA55_SynopCharts.py`・`jra55_jet_report.py`・`jra55_synop_report.py` により、300hPa単図と総観天気図セットのMarkdownレポート生成・GitHub pushに対応 |
+| 2026-05-13 | `GRIB2_Emagram.py`・`JRA55_Emagram.py` 新規作成。GSM/ECMWFのGRIB2およびJRA-55 NetCDFから任意格子点のエマグラム・温位エマグラムを作図。`--start-ft`/`--steps`/`--interval` で複数FT連続作図、`--push` でGitHub push対応 |
+| 2026-05-21 | `GRIB2_Emagram.py` バグ修正: `--push` 指定時にGitHubへ push されない問題を修正。`push_report` 内の `git diff --staged --quiet`（ステージングエリア全体を確認）を `git diff --staged --name-only -- <output_dir>`（output_dir以下のみ確認）に変更。ステージングされたファイル名を画面に出力するようにした |
