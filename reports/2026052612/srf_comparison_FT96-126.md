@@ -6,37 +6,37 @@
 
 ## 地上気圧・10m風・2m気温
 
-#### FT=96h
+#### FT=96h (5/30 21時JST)
 
 | GSM | ECMWF |
 |:---:|:---:|
 | ![GSM FT=96h](./2026052612_FT096h_GSM_SurfacePressure.png) | ![ECMWF FT=96h](./2026052612_FT096h_ECM_SurfacePressure.png) |
 
-#### FT=102h
+#### FT=102h (5/31 3時JST)
 
 | GSM | ECMWF |
 |:---:|:---:|
 | ![GSM FT=102h](./2026052612_FT102h_GSM_SurfacePressure.png) | ![ECMWF FT=102h](./2026052612_FT102h_ECM_SurfacePressure.png) |
 
-#### FT=108h
+#### FT=108h (5/31 9時JST)
 
 | GSM | ECMWF |
 |:---:|:---:|
 | ![GSM FT=108h](./2026052612_FT108h_GSM_SurfacePressure.png) | ![ECMWF FT=108h](./2026052612_FT108h_ECM_SurfacePressure.png) |
 
-#### FT=114h
+#### FT=114h (5/31 15時JST)
 
 | GSM | ECMWF |
 |:---:|:---:|
 | ![GSM FT=114h](./2026052612_FT114h_GSM_SurfacePressure.png) | ![ECMWF FT=114h](./2026052612_FT114h_ECM_SurfacePressure.png) |
 
-#### FT=120h
+#### FT=120h (5/31 21時JST)
 
 | GSM | ECMWF |
 |:---:|:---:|
 | ![GSM FT=120h](./2026052612_FT120h_GSM_SurfacePressure.png) | ![ECMWF FT=120h](./2026052612_FT120h_ECM_SurfacePressure.png) |
 
-#### FT=126h
+#### FT=126h (6/1 3時JST)
 
 | GSM | ECMWF |
 |:---:|:---:|
