@@ -163,7 +163,7 @@ def build_init_times(newest_dt, n_days):
 
 
 def check_data_files(init_times, run_gsm, run_ecm):
-    """各初期時刻のFT=0hデータがサーバーに存在するか HEAD リクエストで確認する。"""
+    """ローカルファイルを優先確認し、なければサーバーHEADリクエストで存在確認する。"""
     missing = []
     for dt in init_times:
         i_str   = dt.strftime('%Y%m%d%H')
@@ -174,33 +174,41 @@ def check_data_files(init_times, run_gsm, run_ecm):
         ecm_sub = "oper" if i_hourZ in (0, 12) else "scda"
 
         if run_gsm:
-            fn  = f"Z__C_RJTD_{i_str}0000_GSM_GPV_Rgl_FD0000_grib2.bin"
-            url = f"{BASE_URL_GSM}/{i_year}/{i_month:02d}/{i_day:02d}/{fn}"
-            try:
-                r = requests.head(url, headers=HEADERS, timeout=15)
-                if r.status_code == 200:
-                    print(f"  GSM {i_str} FT=0h: OK")
-                else:
-                    print(f"  GSM {i_str} FT=0h: NG (HTTP {r.status_code})")
+            fn    = f"Z__C_RJTD_{i_str}0000_GSM_GPV_Rgl_FD0000_grib2.bin"
+            local = _SCRIPT_DIR / "data_gsm" / fn
+            if local.exists():
+                print(f"  GSM {i_str} FT=0h: OK (ローカル)")
+            else:
+                url = f"{BASE_URL_GSM}/{i_year}/{i_month:02d}/{i_day:02d}/{fn}"
+                try:
+                    r = requests.head(url, headers=HEADERS, timeout=15)
+                    if r.status_code == 200:
+                        print(f"  GSM {i_str} FT=0h: OK (サーバー)")
+                    else:
+                        print(f"  GSM {i_str} FT=0h: NG (HTTP {r.status_code})")
+                        missing.append(f"    {url}")
+                except requests.RequestException as e:
+                    print(f"  GSM {i_str} FT=0h: NG (接続エラー: {e})")
                     missing.append(f"    {url}")
-            except requests.RequestException as e:
-                print(f"  GSM {i_str} FT=0h: NG (接続エラー: {e})")
-                missing.append(f"    {url}")
 
         if run_ecm:
-            fn  = f"{i_str}0000-0h-{ecm_sub}-fc.grib2"
-            url = (f"{BASE_URL_ECM}/{i_year:04d}{i_month:02d}{i_day:02d}"
-                   f"/{i_hourZ:02d}z/ifs/0p25/{ecm_sub}/{fn}")
-            try:
-                r = requests.head(url, headers=HEADERS, timeout=15)
-                if r.status_code == 200:
-                    print(f"  ECM {i_str} FT=0h: OK")
-                else:
-                    print(f"  ECM {i_str} FT=0h: NG (HTTP {r.status_code})")
+            fn    = f"{i_str}0000-0h-{ecm_sub}-fc.grib2"
+            local = _SCRIPT_DIR / "data" / "ecm" / fn
+            if local.exists():
+                print(f"  ECM {i_str} FT=0h: OK (ローカル)")
+            else:
+                url = (f"{BASE_URL_ECM}/{i_year:04d}{i_month:02d}{i_day:02d}"
+                       f"/{i_hourZ:02d}z/ifs/0p25/{ecm_sub}/{fn}")
+                try:
+                    r = requests.head(url, headers=HEADERS, timeout=15)
+                    if r.status_code == 200:
+                        print(f"  ECM {i_str} FT=0h: OK (サーバー)")
+                    else:
+                        print(f"  ECM {i_str} FT=0h: NG (HTTP {r.status_code})")
+                        missing.append(f"    {url}")
+                except requests.RequestException as e:
+                    print(f"  ECM {i_str} FT=0h: NG (接続エラー: {e})")
                     missing.append(f"    {url}")
-            except requests.RequestException as e:
-                print(f"  ECM {i_str} FT=0h: NG (接続エラー: {e})")
-                missing.append(f"    {url}")
 
     if missing:
         print("\nエラー: 以下のファイルがサーバーに存在しません。処理を中止します。")
