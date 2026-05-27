@@ -139,6 +139,17 @@ def parse_args():
   python ECM_SurfacePressure.py 2023052312 0 5          # FT=0,6,12,18,24h 5枚
   python ECM_SurfacePressure.py 2023052312 0 5 --tcwv   # 可降水量シェードあり
   python ECM_SurfacePressure.py 2023052312 6 3 --tp     # 積算降水量シェードあり（FT>0必須）
+
+  # 描画範囲・平滑化・矢羽間隔の指定:
+  python ECM_SurfacePressure.py 2023052312 0 1 --area 108 156 5 45          # 描画範囲指定
+  python ECM_SurfacePressure.py 2023052312 0 1 --smooth-size 15             # 強めに平滑化（デフォルト: 10）
+  python ECM_SurfacePressure.py 2023052312 0 1 --wind-step 10               # 矢羽を粗く（デフォルト: 5格子おき）
+  python ECM_SurfacePressure.py 2023052312 0 3 --area 108 156 5 45 --smooth-size 15 --wind-step 10
+
+デフォルト描画設定:
+  --area        108 156 17 55  東経108〜156°、北緯17〜55°
+  --smooth-size 10             10×10格子平均スムージング（ECM 0.25°→約2.5°相当）
+  --wind-step   5              風矢羽を5格子おき（約1.25度間隔）
         """
     )
     parser.add_argument('init_time', type=str,            help='初期時刻 YYYYMMDDHH（UTC）')
@@ -146,10 +157,23 @@ def parse_args():
     parser.add_argument('n_steps',   type=int, nargs='?', default=1,            help='作成する枚数（6h間隔）')
     parser.add_argument('--tcwv',    action='store_true', help='可降水量（TCWV）シェードを表示する')
     parser.add_argument('--tp',      action='store_true', help='積算降水量シェードを表示する（FT>0のみ有効）')
+    parser.add_argument('--area', type=float, nargs=4, default=None,
+                        metavar=('LON_W', 'LON_E', 'LAT_S', 'LAT_N'),
+                        help='描画範囲（デフォルト: 108 156 17 55）')
+    parser.add_argument('--smooth-size', type=int, default=10,
+                        help='uniform_filter のサイズ（デフォルト: 10）')
+    parser.add_argument('--wind-step', type=int, default=5,
+                        help='風矢羽の間引きステップ（デフォルト: 5格子おき）')
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 
-def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, disp_tcwv, disp_tp, output_dir):
+def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, disp_tcwv, disp_tp, output_dir, area=None, smooth_size=10, wind_step=5):
     if i_hourZ in (0, 12):
         ecm_fn = f"{i_year:04d}{i_month:02d}{i_day:02d}{i_hourZ:02d}0000-{ft_hours:d}h-oper-fc.grib2"
     else:
@@ -180,8 +204,8 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, disp_tcwv, disp_tp, outp
     if ft_hours > 0:
         valPrc, latPrc, lonPrc = grb_tp.data()
 
-    # ECM(0.25°)をGSM並みの粗さに平滑化（3×3格子平均）
-    _s = 3
+    # ECM(0.25°)を uniform_filter で平滑化
+    _s = smooth_size
     valPre  = uniform_filter(valPre,  size=_s)
     val10u  = uniform_filter(val10u,  size=_s)
     val10v  = uniform_filter(val10v,  size=_s)
@@ -228,7 +252,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, disp_tcwv, disp_tp, outp
     levels_tmp0  = np.arange(-60, 60,  3)
     levels_pre0  = np.arange(860, 1100,  4)
     levels_pre0B = np.arange(860, 1100, 20)
-    i_area = [108, 156, 17, 55]
+    i_area = area if area is not None else [108, 156, 17, 55]
 
     states_provinces = cfeature.NaturalEarthFeature(
         category='cultural', name='admin_1_states_provinces_lines', scale='50m', facecolor='none')
@@ -293,7 +317,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, disp_tcwv, disp_tp, outp
     gl.ylocator = mticker.FixedLocator(yticks)
 
     # 10m風矢羽
-    wind_slice = (slice(None, None, 5), slice(None, None, 5))
+    wind_slice = (slice(None, None, wind_step), slice(None, None, wind_step))
     ax.barbs(dsp['lon'][wind_slice[0]], dsp['lat'][wind_slice[1]],
              dsp['u_wind'].values[wind_slice] * 1.944,
              dsp['v_wind'].values[wind_slice] * 1.944,
@@ -354,7 +378,8 @@ def main():
 
     success = 0
     for ft in ft_list:
-        if plot_one(i_year, i_month, i_day, i_hourZ, ft, args.tcwv, args.tp, "./output"):
+        if plot_one(i_year, i_month, i_day, i_hourZ, ft, args.tcwv, args.tp, "./output",
+                   area=args.area, smooth_size=args.smooth_size, wind_step=args.wind_step):
             success += 1
     print(f"\n完了: {success}/{args.n_steps}枚 出力先: ./output/")
 

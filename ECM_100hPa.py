@@ -85,6 +85,11 @@ def parse_args():
   python ECM_100hPa.py 2026041200 24 3              # FT=24,30,36h 3枚
   python ECM_100hPa.py 2026041200 0 1 --smooth-size 5  # スムージング5×5
   python ECM_100hPa.py 2026041200 0 1 --wind-step 8    # 風矢羽8格子おき
+
+デフォルト描画設定:
+  --area        84 156 17 55   東経84〜156°、北緯17〜55°
+  --smooth-size 3              3×3格子平均スムージング（ECM 0.25°→約0.75°相当）
+  --wind-step   12             風矢羽を12格子おき（約3度間隔）
         """
     )
     parser.add_argument('init_time', type=str, help='初期時刻 YYYYMMDDHH（UTC）')

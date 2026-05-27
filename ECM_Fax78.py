@@ -136,6 +136,11 @@ def parse_args():
   python ECM_Fax78.py 2023052318 0 5              # FT=0,6,12,18,24h 5枚
   python ECM_Fax78.py 2023052318 0 1 --smooth-size 5  # スムージング5×5
   python ECM_Fax78.py 2023052318 0 1 --wind-step 8    # 風矢羽8格子おき
+
+デフォルト描画設定:
+  area          108 156 17 55  東経108〜156°、北緯17〜55°（固定）
+  --smooth-size 3              3×3格子平均スムージング（ECM 0.25°→約0.75°相当）
+  --wind-step   5              風矢羽を5格子おき（約1.25度間隔）
         """
     )
     parser.add_argument('init_time',  type=str, help='初期時刻 YYYYMMDDHH（UTC）')

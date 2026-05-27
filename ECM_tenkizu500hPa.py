@@ -131,6 +131,10 @@ def parse_args():
   python ECM_tenkizu500hPa.py 2026041200 0 5              # FT=0,6,12,18,24h 5枚
   python ECM_tenkizu500hPa.py 2026041200 12 1             # FT=12h 1枚
   python ECM_tenkizu500hPa.py 2026041200 0 1 --smooth-size 5  # スムージング5×5
+
+デフォルト描画設定:
+  area          108 156 17 55  東経108〜156°、北緯17〜55°（固定）
+  --smooth-size 3              3×3格子平均スムージング（ECM 0.25°→約0.75°相当）
         """
     )
     parser.add_argument('init_time', type=str, help='初期時刻 YYYYMMDDHH（UTC）')

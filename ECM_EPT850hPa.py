@@ -109,6 +109,11 @@ def parse_args():
   start_ft : 開始予報時間（時間数）例: 0, 12, 24
   n_steps  : 作成する枚数（6h間隔）
   level    : 気圧面 hPa（省略可、デフォルト: 850）
+
+デフォルト描画設定:
+  --area        115 151 20 50  東経115〜151°、北緯20〜50°
+  --smooth-size 3              3×3格子平均スムージング（ECM 0.25°→約0.75°相当）
+  --wind-step   5              風矢羽を5格子おき（約1.25度間隔）
         """
     )
     parser.add_argument('init_time', type=str, help='初期時刻 YYYYMMDDHH（UTC）')
