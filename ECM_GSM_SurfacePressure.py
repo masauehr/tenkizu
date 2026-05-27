@@ -8,12 +8,13 @@
 # --push で git push まで行う。
 #
 # 使用例:
-#   python ECM_GSM_SurfacePressure.py 2026052712                  # FT=0h（GSM+ECM）
-#   python ECM_GSM_SurfacePressure.py 2026052712 0000 3           # FT=0,6,12h 3枚
-#   python ECM_GSM_SurfacePressure.py 2026052712 0000 12h         # 12hプリセット
-#   python ECM_GSM_SurfacePressure.py 2026052712 --gsm            # GSMのみ FT=0h
-#   python ECM_GSM_SurfacePressure.py 2026052712 --ecm            # ECMWFのみ FT=0h
-#   python ECM_GSM_SurfacePressure.py 2026052712 0000 3 --push    # pushあり
+#   python ECM_GSM_SurfacePressure.py 2026052712                          # FT=0h（GSM+ECM）
+#   python ECM_GSM_SurfacePressure.py 2026052712 0000 3                   # FT=0,6,12h 3枚
+#   python ECM_GSM_SurfacePressure.py 2026052712 0000 3 --interval 12     # 12h間隔 3枚
+#   python ECM_GSM_SurfacePressure.py 2026052712 0000 12h                 # 12hプリセット
+#   python ECM_GSM_SurfacePressure.py 2026052712 --gsm                    # GSMのみ FT=0h
+#   python ECM_GSM_SurfacePressure.py 2026052712 --ecm                    # ECMWFのみ FT=0h
+#   python ECM_GSM_SurfacePressure.py 2026052712 0000 3 --push            # pushあり
 
 import sys
 import shutil
@@ -46,12 +47,13 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 使用例:
-  python ECM_GSM_SurfacePressure.py 2026052712                  # FT=0h（GSM+ECM）
-  python ECM_GSM_SurfacePressure.py 2026052712 0000 3           # FT=0,6,12h 3枚
-  python ECM_GSM_SurfacePressure.py 2026052712 0000 12h         # 12hプリセット
-  python ECM_GSM_SurfacePressure.py 2026052712 --gsm            # GSMのみ FT=0h
-  python ECM_GSM_SurfacePressure.py 2026052712 --ecm            # ECMWFのみ FT=0h
-  python ECM_GSM_SurfacePressure.py 2026052712 0000 3 --push    # pushあり
+  python ECM_GSM_SurfacePressure.py 2026052712                          # FT=0h（GSM+ECM）
+  python ECM_GSM_SurfacePressure.py 2026052712 0000 3                   # FT=0,6,12h 3枚
+  python ECM_GSM_SurfacePressure.py 2026052712 0000 3 --interval 12     # 12h間隔 3枚
+  python ECM_GSM_SurfacePressure.py 2026052712 0000 12h                 # 12hプリセット
+  python ECM_GSM_SurfacePressure.py 2026052712 --gsm                    # GSMのみ FT=0h
+  python ECM_GSM_SurfacePressure.py 2026052712 --ecm                    # ECMWFのみ FT=0h
+  python ECM_GSM_SurfacePressure.py 2026052712 0000 3 --push            # pushあり
 
 ECM描画設定（固定値）:
   --area        108 156 5 45   東経108〜156°、北緯5〜45°
@@ -65,6 +67,8 @@ ECM描画設定（固定値）:
                         help="開始予報時間 DDHH形式（デフォルト: 0000）")
     parser.add_argument("n_steps", type=str, nargs="?", default="1",
                         help=f"枚数（デフォルト: 1）またはプリセット名 [{preset_list}]")
+    parser.add_argument("--interval", type=int, default=6,
+                        help="FT間隔 時間数（デフォルト: 6）。プリセット指定時は無視される")
     mode_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument("--gsm", action="store_true",
                             help="GSMのみ実行（デフォルトは両モデル）")
@@ -185,7 +189,7 @@ def main():
         interval = PRESETS[args.n_steps]["interval"]
     else:
         n_steps = int(args.n_steps)
-        interval = 6
+        interval = args.interval
 
     ft_end = start_hours + (n_steps - 1) * interval
     ft_list_h = [start_hours + i * interval for i in range(n_steps)]
