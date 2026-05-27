@@ -47,7 +47,8 @@ GSM（全球モデル）および ECMWF GRIB2 データをダウンロードし�
 | `jet_front_wide_report.py` | 上層風・850hPa相当温位のみの広域版レポートを生成。描画領域を拡大した「ジェット・前線解析（広域）」を `reports/{init_str}-wide/` に出力。`--avg_steps N` で予報時間軸の平均天気図に対応 |
 | `jet_front_ave_report.py` | 複数初期時刻（12h間隔で遡る）のFT=0h解析値を平均した天気図を生成。梅雨入り等の平均場把握に有効。出力先: `reports/{init_str}-ave/` |
 | `upper_wind_report.py` | 指定気圧面の上層天気図を生成し `reports/` に MD+PNG をまとめる。`--push` で GitHub push |
-| `synop_report.py` | 総観天気図（Jet300hPa・Fax57・Fax78・EPT850hPa・地上気圧）のレポートを生成。`--ecm` でECM追加、`--charts` で種別指定、`--push` で GitHub push |
+| `synop_report.py` | 総観天気図（Jet300hPa・Fax57・Fax78・EPT850hPa・地上気圧）のレポートを生成。`--ecm` 指定時はGSM/ECMを横並びテーブルで比較表示。FT見出しにJST時刻付き。`--charts` で種別指定、`--push` で GitHub push |
+| `ECM_GSM_SurfacePressure.py` | GSM・ECMWF の地上気圧天気図を横並び比較する Markdown レポートを生成。`--gsm`/`--ecm` で片モデルのみ実行可。`--push` で GitHub push |
 | `emagram.py` | **エマグラム・温位エマグラム描画**。Wyoming高層ゾンデデータを取得し、エマグラム（CAPE/CIN・ホドグラフ付き）と温位エマグラム（θ/θe/θes/θw）をPNG出力。`--report` でMarkdownレポート生成、`--push` でGitHub push |
 | `GRIB2_Emagram.py` | GSM/ECMWFのGRIB2から任意緯度・経度の格子点エマグラム・温位エマグラムを作図。`--start-ft`/`--steps`/`--interval` で複数FTを連続作図。`--push` でGitHub push |
 | `JRA55_Emagram.py` | JRA-55 NetCDFから任意緯度・経度の格子点エマグラム・温位エマグラムを作図。`--push` でGitHub push |
@@ -103,6 +104,16 @@ python <スクリプト名> INIT_TIME [START_FT [N_STEPS [その他オプショ�
 | `0100` | 24h（1日後） |
 | `0112` | 36h |
 | `0200` | 48h（2日後） |
+
+### ヘルプ表示
+
+引数に `?`・`-?`・`--?` のいずれかを指定すると、そのスクリプトのヘルプ（引数一覧・使用例）を表示して終了する。`parse_args()` を持つ全34スクリプトで共通して有効。
+
+```bash
+python synop_report.py --?     # ヘルプ表示
+python GSM_Jet300hPa.py -?     # 同上
+python jet_front_report.py ?   # 同上
+```
 
 ---
 
@@ -381,8 +392,52 @@ python synop_report.py 2026041200 0000 5 --ecm --push          # GSM+ECM 5枚 �
 4. 850hPa 相当温位・風矢羽
 5. 地上気圧・10m風・2m気温
 
+**`--ecm` 指定時の表示形式**: 各FTでGSMとECMを2列テーブルで横並び比較表示。FT見出しには JST 時刻も付与（例: `FT=24h (5/28 9時JST)`）。
+
 > **注意**: Jet の GSM版（`GSM_Jet300hPa.py`）と ECM版（`ECM_100hPa.py level=300`）は描画内容が異なる。  
 > GSM版は Isotach + 非地衡風矢羽、ECM版は等高度線 + 風矢羽。
+
+---
+
+### 地上気圧 GSM/ECMWF 比較レポート（ECM_GSM_SurfacePressure.py）
+
+GSM と ECMWF の地上気圧天気図を FT ごとに横並びで比較する Markdown レポートを生成するスクリプト。  
+内部で `GSM_faxSrfPre.py` と `ECM_SurfacePressure.py` を実行し、生成した PNG を `reports/{init_str}/` にコピーして Markdown にまとめる。
+
+```bash
+python ECM_GSM_SurfacePressure.py INIT_TIME [start_ft] [n_steps] [--gsm] [--ecm] [--push]
+```
+
+| 引数 | 形式 | デフォルト | 説明 |
+|---|---|---|---|
+| `INIT_TIME` | YYYYMMDDHH | 必須 | 初期時刻（UTC） |
+| `start_ft` | DDHH | `0000` | 開始予報時間 |
+| `n_steps` | 整数 / `12h` / `24h` | `1` | 枚数またはプリセット |
+| `--gsm` | フラグ | なし | GSM のみ実行（デフォルトは両モデル） |
+| `--ecm` | フラグ | なし | ECMWF のみ実行（デフォルトは両モデル） |
+| `--push` | フラグ | なし | GitHub へ git push（省略時はローカル保存のみ） |
+
+```bash
+python ECM_GSM_SurfacePressure.py 2026052712                  # FT=0h（GSM+ECM）
+python ECM_GSM_SurfacePressure.py 2026052712 0000 3           # FT=0,6,12h 3枚
+python ECM_GSM_SurfacePressure.py 2026052712 0000 12h         # 12hプリセット（FT=0〜48h）
+python ECM_GSM_SurfacePressure.py 2026052712 --gsm            # GSMのみ FT=0h
+python ECM_GSM_SurfacePressure.py 2026052712 --ecm            # ECMWFのみ FT=0h
+python ECM_GSM_SurfacePressure.py 2026052712 0000 3 --push    # pushあり
+```
+
+**ECM描画設定（固定値）:**
+
+| 設定 | 値 | 説明 |
+|---|---|---|
+| `--area` | 108 156 5 45 | 東経108〜156°、北緯5〜45° |
+| `--smooth-size` | 10 | 10×10格子平均スムージング（ECM 0.25°→約2.5°相当） |
+| `--wind-step` | 10 | 風矢羽を10格子おき（約2.5度間隔） |
+
+GSM 側の描画範囲も `--area 108 156 5 45` を適用（両モデルで範囲を揃えるため）。  
+FT 見出しには UTC+9 で換算した JST 時刻も付与（例: `FT=0h (5/27 21時JST)`）。
+
+生成物: `reports/{init_str}/srf_comparison_{FTラベル}.md`
 
 ---
 
@@ -636,15 +691,17 @@ python GSM_fax78.py 2026041200 0000 5    # FT=0〜24h 5枚
 ### GSM_faxSrfPre.py — 地上気圧・風・2m 気温
 
 ```bash
-python GSM_faxSrfPre.py INIT_TIME [START_FT [N_STEPS]]
+python GSM_faxSrfPre.py INIT_TIME [START_FT [N_STEPS]] [--area LON_W LON_E LAT_S LAT_N]
 ```
 
 ```bash
-python GSM_faxSrfPre.py 2026041200            # FT=0h 1枚
-python GSM_faxSrfPre.py 2026041200 0000 5    # FT=0〜24h 5枚
+python GSM_faxSrfPre.py 2026041200                          # FT=0h 1枚
+python GSM_faxSrfPre.py 2026041200 0000 5                   # FT=0〜24h 5枚
+python GSM_faxSrfPre.py 2026041200 0000 1 --area 108 156 5 45  # 描画範囲指定
 ```
 
 描画要素: MSL 等圧線（4hPa/20hPa 太線）・10m 風矢羽・2m 等温度線（緑）・H/L スタンプ（気圧値付き）  
+**`--area LON_W LON_E LAT_S LAT_N`**: 描画範囲を上書き指定（デフォルト: 108〜156°E, 17〜55°N）  
 **注意**: GSM Rgl には可降水量(tcwv/pwat)・積算降水量(tp)が含まれないため非対応。
 
 ---
@@ -656,14 +713,59 @@ python GSM_faxSrfPre.py 2026041200 0000 5    # FT=0〜24h 5枚
 
 `START_FT` は **時間数**（例: `0`, `6`, `24`）。
 
+### ECM 描画の共通オプション（平滑化・矢羽間引き）
+
+ECMWF データ（0.25°格子）は GSM（0.125°）より細かく天気図がざらつきやすいため、`scipy.ndimage.uniform_filter` で平滑化を適用している。  
+また風矢羽の表示密度を制御するための `--wind-step` も共通オプションとして実装されている。
+
+| オプション | 対応スクリプト | デフォルト値 | 効果 |
+|---|---|---|---|
+| `--smooth-size N` | 全ECM系（ECM_Fax57.py を除く） | 3〜10（スクリプト依存） | N×N 格子平均スムージング（大きいほど滑らか） |
+| `--wind-step N` | ECM_SurfacePressure / EPT850hPa / Fax78 / 100hPa | 5〜12（スクリプト依存） | N 格子おきに矢羽を表示（大きいほど間引き） |
+
+**デフォルト値一覧:**
+
+| スクリプト | `--smooth-size` | `--wind-step` | デフォルト描画範囲 |
+|---|---|---|---|
+| `ECM_SurfacePressure.py` | 10 | 5 | 108〜156°E, 17〜55°N |
+| `ECM_tenkizu500hPa.py` | 3 | なし | 108〜156°E, 17〜55°N（固定） |
+| `ECM_EPT850hPa.py` | 3 | 5 | 115〜151°E, 20〜50°N |
+| `ECM_Fax78.py` | 3 | 5 | 108〜156°E, 17〜55°N（固定） |
+| `ECM_100hPa.py` | 3 | 12 | 84〜156°E, 17〜55°N |
+
+> **`ECM_GSM_SurfacePressure.py` での適用値**: `--smooth-size 10 --wind-step 10`（ECM_SurfacePressure.py を呼び出す際の固定値）
+
+### ECM_tenkizu500hPa.py — 500hPa 高度・渦度
+
+```bash
+python ECM_tenkizu500hPa.py INIT_TIME [START_FT [N_STEPS [LEVEL]]] [--smooth-size N]
+```
+
+```bash
+python ECM_tenkizu500hPa.py 2026041200 0 1             # FT=0h 1枚
+python ECM_tenkizu500hPa.py 2026041200 0 5             # FT=0〜24h 5枚
+python ECM_tenkizu500hPa.py 2026041200 0 1 --smooth-size 5  # スムージング強め
+```
+
+描画要素: 等高度線（60m/300m間隔）・5820/5400gpm 特定線・渦度シェード・渦度等値線・H/L スタンプ  
+**`--smooth-size N`**: スムージングサイズ（デフォルト: 3、描画範囲は固定）
+
 ### ECM_EPT850hPa.py — 850hPa 相当温位・風
 
 ```bash
-python ECM_EPT850hPa.py INIT_TIME [START_FT [N_STEPS [LEVEL]]] [--area LON_W LON_E LAT_S LAT_N]
+python ECM_EPT850hPa.py INIT_TIME [START_FT [N_STEPS [LEVEL]]] [--area LON_W LON_E LAT_S LAT_N] [--smooth-size N] [--wind-step N]
+```
+
+```bash
+python ECM_EPT850hPa.py 2026041200 0 1                        # FT=0h 1枚
+python ECM_EPT850hPa.py 2026041200 0 1 --smooth-size 5        # スムージング強め
+python ECM_EPT850hPa.py 2026041200 0 1 --wind-step 8          # 矢羽を粗く
 ```
 
 描画要素: 相当温位シェード（jet カラーマップ）・相当温位等値線（細線/太線）・風矢羽  
-**`--area`**: 描画範囲を上書き指定（デフォルト: 115〜151°E, 20〜50°N）
+**`--area`**: 描画範囲を上書き指定（デフォルト: 115〜151°E, 20〜50°N）  
+**`--smooth-size N`**: スムージングサイズ（デフォルト: 3）  
+**`--wind-step N`**: 矢羽の間引き格子数（デフォルト: 5 ≒ 1.25度間隔）
 
 ### ECM_Fax57.py — FAX57（500hPa 気温・700hPa 湿数）
 
@@ -671,29 +773,42 @@ python ECM_EPT850hPa.py INIT_TIME [START_FT [N_STEPS [LEVEL]]] [--area LON_W LON
 python ECM_Fax57.py INIT_TIME [START_FT [N_STEPS]]
 ```
 
-描画要素: 700hPa T-Td シェード・等値線・500hPa 等温度線（blue）・-30°C 線（purple）・W/C スタンプ
+描画要素: 700hPa T-Td シェード・等値線・500hPa 等温度線（blue）・-30°C 線（purple）・W/C スタンプ  
+**注意**: 平滑化・風矢羽なし（矢羽は描画要素に含まれない）。
 
 ### ECM_Fax78.py — FAX78（700hPa 収束発散・850hPa 気温・風）
 
 ```bash
-python ECM_Fax78.py INIT_TIME [START_FT [N_STEPS]] [--level-div 700] [--level-t 850]
+python ECM_Fax78.py INIT_TIME [START_FT [N_STEPS]] [--level-div 700] [--level-t 850] [--smooth-size N] [--wind-step N]
 ```
 
-描画要素: 700hPa 収束・発散シェード・850hPa 等温度線（blue）・風矢羽・W/C スタンプ
+```bash
+python ECM_Fax78.py 2026041200 0 1 --smooth-size 5    # スムージング強め
+python ECM_Fax78.py 2026041200 0 1 --wind-step 8      # 矢羽を粗く
+```
+
+描画要素: 700hPa 収束・発散シェード・850hPa 等温度線（blue）・風矢羽・W/C スタンプ  
+**`--smooth-size N`**: スムージングサイズ（デフォルト: 3、描画範囲は固定）  
+**`--wind-step N`**: 矢羽の間引き格子数（デフォルト: 5 ≒ 1.25度間隔）
 
 ### ECM_SurfacePressure.py — 地上気圧・風・2m 気温
 
 ```bash
-python ECM_SurfacePressure.py INIT_TIME [START_FT [N_STEPS]] [--tcwv] [--tp]
+python ECM_SurfacePressure.py INIT_TIME [START_FT [N_STEPS]] [--tcwv] [--tp] [--area LON_W LON_E LAT_S LAT_N] [--smooth-size N] [--wind-step N]
 ```
 
 ```bash
-python ECM_SurfacePressure.py 2026040712 0 5 --tcwv   # 可降水量シェードあり
-python ECM_SurfacePressure.py 2026040712 6 3 --tp     # 積算降水量シェードあり（FT>0必須）
+python ECM_SurfacePressure.py 2026040712 0 5 --tcwv                          # 可降水量シェードあり
+python ECM_SurfacePressure.py 2026040712 6 3 --tp                            # 積算降水量シェードあり（FT>0必須）
+python ECM_SurfacePressure.py 2026040712 0 1 --area 108 156 5 45             # 描画範囲指定
+python ECM_SurfacePressure.py 2026040712 0 1 --smooth-size 15 --wind-step 10 # 平滑化強め・矢羽粗め
 ```
 
 描画要素: MSL 等圧線（4hPa/20hPa 太線）・10m 風矢羽・2m 等温度線（緑）・H/L スタンプ（気圧値付き）  
-オプション: `--tcwv` 可降水量シェード / `--tp` 積算降水量シェード
+オプション: `--tcwv` 可降水量シェード / `--tp` 積算降水量シェード  
+**`--area LON_W LON_E LAT_S LAT_N`**: 描画範囲を上書き指定（デフォルト: 108〜156°E, 17〜55°N）  
+**`--smooth-size N`**: スムージングサイズ（デフォルト: 10 → 約2.5°相当）  
+**`--wind-step N`**: 矢羽の間引き格子数（デフォルト: 5 ≒ 1.25度間隔）
 
 ---
 
@@ -705,7 +820,8 @@ python ECM_SurfacePressure.py 2026040712 6 3 --tp     # 積算降水量シェー
 - **等高度線**: 120m 間隔（黒線）
 - **風矢羽**: m/s → ノット変換済み
 - **表示域**: 84〜156°E, 17〜55°N（ステレオ投影）※ `--area` で変更可
-- **平滑化**: ECM版のみ 3×3 uniform_filter を適用（0.25°格子を GSM 並みに平滑化）
+- **平滑化**: ECM版のみ uniform_filter を適用（`--smooth-size` で制御、デフォルト: 3）
+- **風矢羽間引き**: `--wind-step` で制御（デフォルト: 12 ≒ 3度間隔）
 - **`--area LON_W LON_E LAT_S LAT_N`**: 描画範囲を上書き指定（`jet_front_wide_report.py` がこのオプションで広域領域を渡す）
 
 ### GSM_100hPa.py
@@ -725,15 +841,19 @@ python GSM_100hPa.py 2026041200 0100 3 50  # 50hPa FT=24〜36h 3枚
 ### ECM_100hPa.py
 
 ```bash
-python ECM_100hPa.py INIT_TIME [START_FT_H [N_STEPS [LEVEL]]]
+python ECM_100hPa.py INIT_TIME [START_FT_H [N_STEPS [LEVEL]]] [--area LON_W LON_E LAT_S LAT_N] [--smooth-size N] [--wind-step N]
 ```
 
 ```bash
-python ECM_100hPa.py 2026041200 0 1        # 100hPa FT=0h 1枚
-python ECM_100hPa.py 2026041200 0 5        # 100hPa FT=0〜24h 5枚
-python ECM_100hPa.py 2026041200 24 3 50    # 50hPa FT=24〜36h 3枚
+python ECM_100hPa.py 2026041200 0 1                       # 100hPa FT=0h 1枚
+python ECM_100hPa.py 2026041200 0 5                       # 100hPa FT=0〜24h 5枚
+python ECM_100hPa.py 2026041200 24 3 50                   # 50hPa FT=24〜36h 3枚
+python ECM_100hPa.py 2026041200 0 1 --smooth-size 5       # スムージング強め
+python ECM_100hPa.py 2026041200 0 1 --wind-step 8         # 矢羽を粗く
 ```
 
+**`--smooth-size N`**: スムージングサイズ（デフォルト: 3）  
+**`--wind-step N`**: 矢羽の間引き格子数（デフォルト: 12 ≒ 3度間隔）  
 出力: `output/{dt}_FT{FFF}h_ECM_{level}hPa_Height_Wind.png`
 
 > **注意**: ECMファイルは 100MB 超。50MB 未満のファイルは不完全と判定し自動削除・再ダウンロードする。
@@ -805,18 +925,29 @@ run_python(f"GSM_100hPa.py {init_str} {start_ft} {n_steps} {lev} {area_arg} {avg
 
 ### ECM版の平滑化タイミング
 
-ECM の格子間隔（0.25°）は GSM（0.125°）より粗く天気図がざらつくため、各ファイル読み込み直後に `scipy.ndimage.uniform_filter(size=3)`（3×3 格子平均）を適用してから、平均処理のリストに積む。
+ECM の格子間隔（0.25°）は GSM（0.125°）より粗く天気図がざらつくため、各ファイル読み込み直後に `scipy.ndimage.uniform_filter(size=smooth_size)` を適用してから、平均処理のリストに積む。  
+`--smooth-size` 引数でサイズを変更できる（デフォルトはスクリプト・用途によって異なる）。
 
 ```python
 # ECM_100hPa.py / ECM_EPT850hPa.py の plot_avg 内
-_valHt = uniform_filter(_valHt, size=3)   # 平均前に平滑化
-_valWu = uniform_filter(_valWu, size=3)
-_valWv = uniform_filter(_valWv, size=3)
+_s = smooth_size                          # --smooth-size 引数（デフォルト: 3）
+_valHt = uniform_filter(_valHt, size=_s)  # 平均前に平滑化
+_valWu = uniform_filter(_valWu, size=_s)
+_valWv = uniform_filter(_valWv, size=_s)
 
 valHt_all.append(_valHt)                  # 平滑済みデータを積む
 ```
 
 **平均後ではなく各ファイル読み込み直後に適用**することで、各 FT の格子スケールノイズが平均値に影響しないようにしている。`plot_one`（通常1枚描画）でも同じ位置で適用されており、処理の一貫性がある。
+
+**`smooth_size` の目安:**
+
+| `smooth_size` | 実効解像度（0.25°格子） | 用途 |
+|---|---|---|
+| 3 | 約0.75° | デフォルト（GSM相当） |
+| 5 | 約1.25° | やや平滑 |
+| 10 | 約2.5° | ECM_SurfacePressure.py デフォルト |
+| 15 | 約3.75° | 強め（`ECM_GSM_SurfacePressure.py` での以前の設定） |
 
 ---
 
@@ -1193,3 +1324,10 @@ data/Jra55/
 | 2026-05-13 | JRA-55再解析データ対応を追加。`JRA55_JetDivergence.py`・`JRA55_SynopCharts.py`・`jra55_jet_report.py`・`jra55_synop_report.py` により、300hPa単図と総観天気図セットのMarkdownレポート生成・GitHub pushに対応 |
 | 2026-05-13 | `GRIB2_Emagram.py`・`JRA55_Emagram.py` 新規作成。GSM/ECMWFのGRIB2およびJRA-55 NetCDFから任意格子点のエマグラム・温位エマグラムを作図。`--start-ft`/`--steps`/`--interval` で複数FT連続作図、`--push` でGitHub push対応 |
 | 2026-05-21 | `GRIB2_Emagram.py` バグ修正: `--push` 指定時にGitHubへ push されない問題を修正。`push_report` 内の `git diff --staged --quiet`（ステージングエリア全体を確認）を `git diff --staged --name-only -- <output_dir>`（output_dir以下のみ確認）に変更。ステージングされたファイル名を画面に出力するようにした |
+| 2026-05-27 | `parse_args()` を持つ全34スクリプトに `?`/`-?`/`--?` ヘルプ表示を追加。引数にこれらを指定するとそのスクリプトのヘルプ（引数一覧・使用例）を表示して終了する |
+| 2026-05-27 | `ECM_GSM_SurfacePressure.py` を新規作成（GSM/ECMWF地上気圧の横並び比較レポート生成。FT見出しにJST時刻付き。`--gsm`/`--ecm`/`--push` オプション対応） |
+| 2026-05-27 | `synop_report.py` を更新: `--ecm` 時にGSM/ECMを2列テーブルで横並び比較表示。FT見出しにJST時刻（例: `FT=24h (5/28 9時JST)`）を付与 |
+| 2026-05-27 | `GSM_faxSrfPre.py` に `--area LON_W LON_E LAT_S LAT_N` 引数を追加（描画範囲の外部指定が可能に） |
+| 2026-05-27 | ECM系全スクリプトに `--smooth-size` 引数を追加（uniform_filter サイズを CLI から制御可能に。デフォルト: ECM_SurfacePressure=10、その他=3） |
+| 2026-05-27 | `ECM_EPT850hPa.py`・`ECM_Fax78.py`・`ECM_100hPa.py`・`ECM_SurfacePressure.py` に `--wind-step` 引数を追加（風矢羽の間引き格子数を制御。デフォルト: ECM_100hPa=12、その他=5） |
+| 2026-05-27 | 全ECM系スクリプトの `?` ヘルプ epilog にデフォルト描画設定（area/smooth-size/wind-step）を追加 |
