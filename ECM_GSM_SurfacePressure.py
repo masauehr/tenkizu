@@ -102,6 +102,33 @@ def run_git(cmd, cwd):
     return result.returncode
 
 
+def check_data_files(init_str, ft_list_h, run_gsm, run_ecm, script_dir):
+    """必要なGRIB2データファイルの存在を事前確認する。不足があればFalseを返す。"""
+    i_hourZ = int(init_str[8:10])
+    gsm_dir = script_dir / "data_gsm"
+    ecm_dir = script_dir / "data" / "ecm"
+    ecm_sub = "oper" if i_hourZ in (0, 12) else "scda"
+
+    missing = []
+    for ft_h in ft_list_h:
+        if run_gsm:
+            ft_ddhh = hours_to_ddhh(ft_h)
+            fn = f"Z__C_RJTD_{init_str}0000_GSM_GPV_Rgl_FD{ft_ddhh:04d}_grib2.bin"
+            if not (gsm_dir / fn).exists():
+                missing.append(f"  GSM FT={ft_h:3d}h: data_gsm/{fn}")
+        if run_ecm:
+            fn = f"{init_str}0000-{ft_h}h-{ecm_sub}-fc.grib2"
+            if not (ecm_dir / fn).exists():
+                missing.append(f"  ECM FT={ft_h:3d}h: data/ecm/{fn}")
+
+    if missing:
+        print("エラー: 以下のデータファイルが見つかりません。処理を中止します。")
+        for m in missing:
+            print(m)
+        return False
+    return True
+
+
 def copy_png(src, report_dir, label):
     if src.exists():
         shutil.copy2(src, report_dir / src.name)
@@ -153,6 +180,12 @@ def main():
     print(f" 地上気圧比較レポート [{model_label}]")
     print(f" 初期時刻: {init_str}  FT: {start_hours}〜{ft_end}h  {n_steps}枚  {interval}h間隔")
     print("=" * 60)
+
+    # ---- Step 0: データファイル存在確認 ----
+    print("\n--- Step 0: データファイル確認 ---")
+    if not check_data_files(init_str, ft_list_h, run_gsm, run_ecm, script_dir):
+        sys.exit(1)
+    print("  全ファイル確認OK")
 
     # ---- Step 1: PNG 生成 ----
     print("\n--- Step 1: PNG 生成 ---")
