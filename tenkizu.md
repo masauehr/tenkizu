@@ -121,6 +121,34 @@ python jet_front_report.py ?   # 同上
 
 5本のレポートスクリプトが利用可能。いずれも `reports/{init_str}/` に PNG と Markdown を生成し、`--push` 指定時に GitHub へ push する。
 
+### Step 0: サーバーデータファイル事前確認
+
+全レポートスクリプトは実行開始時に **Step 0** として、必要な GRIB2 ファイルがサーバー上に存在するかを HTTP HEAD リクエストで確認する。  
+ファイルが 1 件でも見つからない場合はエラーメッセージと URL を表示して処理を中断する（データダウンロードは行わない）。
+
+| モデル | 確認先サーバー | ファイル名パターン |
+|-------|--------------|-----------------|
+| GSM | `http://database.rish.kyoto-u.ac.jp/arch/jmadata/data/gpv/original/YYYY/MM/DD/` | `Z__C_RJTD_{YYYYMMDDHH}0000_GSM_GPV_Rgl_FD{DDHH}_grib2.bin` |
+| ECM | `https://data.ecmwf.int/forecasts/YYYYMMDD/HHz/ifs/0p25/{oper\|scda}/` | `{YYYYMMDDHH}0000-{FT}h-{oper\|scda}-fc.grib2` |
+
+- ECM は初期時刻が 00/12UTC → `oper`、06/18UTC → `scda`
+- `jet_front_ave_report.py` は複数初期時刻について各 FT=0h ファイルをまとめて確認する
+- `jet_front_wide_report.py` の `--avg_steps` 使用時は平均に使う全サブ FT について確認する
+- ECM は **最新5日分のみ無償公開**のため、5日以上前の初期時刻では NG となる
+
+```
+--- Step 0: データファイル確認 ---
+  GSM FT=  0h: OK
+  ECM FT=  0h: OK
+  GSM FT= 24h: OK
+  ECM FT= 24h: NG (HTTP 404)
+
+エラー: 以下のファイルがサーバーに存在しません。処理を中止します。
+    https://data.ecmwf.int/forecasts/.../...grib2
+```
+
+---
+
 ### 上層天気図レポート生成（upper_wind_report.py）
 
 指定した気圧面の上層天気図（GSM/ECM）を生成し、`reports/{init_str}/` に PNG + `upper_wind_report.md` をまとめて GitHub push するスクリプト。
@@ -1331,3 +1359,5 @@ data/Jra55/
 | 2026-05-27 | ECM系全スクリプトに `--smooth-size` 引数を追加（uniform_filter サイズを CLI から制御可能に。デフォルト: ECM_SurfacePressure=10、その他=3） |
 | 2026-05-27 | `ECM_EPT850hPa.py`・`ECM_Fax78.py`・`ECM_100hPa.py`・`ECM_SurfacePressure.py` に `--wind-step` 引数を追加（風矢羽の間引き格子数を制御。デフォルト: ECM_100hPa=12、その他=5） |
 | 2026-05-27 | 全ECM系スクリプトの `?` ヘルプ epilog にデフォルト描画設定（area/smooth-size/wind-step）を追加 |
+| 2026-05-27 | `ECM_GSM_SurfacePressure.py` に Step 0 サーバーデータ確認処理を追加（RISH/ECMWF サーバーへ HEAD リクエストでファイル存在確認、未公開時は処理中断） |
+| 2026-05-27 | `synop_report.py`・`jet_front_report.py`・`jet_front_wide_report.py`・`upper_wind_report.py`・`jet_front_ave_report.py` の5本に Step 0 サーバーデータ確認処理を追加。`jet_front_wide_report.py` は `--avg_steps` 使用時の全サブFTにも対応、`jet_front_ave_report.py` は複数初期時刻をまとめて確認 |
