@@ -34,6 +34,12 @@ def parse_args():
     parser.add_argument("--output-dir", default="./output", help="一時PNG出力先")
     parser.add_argument("--config", default="./jra55_config.ini", help="JRA-55認証設定ファイル")
     parser.add_argument("--push", action="store_true", help="GitHubへ git push する")
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 

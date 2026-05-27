@@ -147,10 +147,19 @@ def parse_args():
                         help='開始予報時間 DDHH形式（デフォルト: 0000）')
     parser.add_argument('n_steps',   type=int, nargs='?', default=1,
                         help='作成する枚数（6h間隔、デフォルト: 1）')
+    parser.add_argument('--area', type=float, nargs=4, default=None,
+                        metavar=('LON_W', 'LON_E', 'LAT_S', 'LAT_N'),
+                        help='描画範囲（デフォルト: 108 156 17 55）')
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 
-def plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, output_dir):
+def plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, output_dir, area=None):
     ft_hours = ddhh_to_hours(ft_ddhh)
 
     gsm_fn  = f"Z__C_RJTD_{i_year:04d}{i_month:02d}{i_day:02d}{i_hourZ:02d}0000_GSM_GPV_Rgl_FD{ft_ddhh:04d}_grib2.bin"
@@ -203,7 +212,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, output_dir):
     levels_tmp0  = np.arange(-60, 60,  3)
     levels_pre0  = np.arange(860, 1100,  4)
     levels_pre0B = np.arange(860, 1100, 20)
-    i_area = [108, 156, 17, 55]
+    i_area = area if area is not None else [108, 156, 17, 55]
 
     proj        = ccrs.Stereographic(central_latitude=60, central_longitude=140)
     latlon_proj = ccrs.PlateCarree()
@@ -289,7 +298,7 @@ def main():
 
     success = 0
     for ft_ddhh in ft_list:
-        if plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, "./output"):
+        if plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, "./output", area=args.area):
             success += 1
     print(f"\n完了: {success}/{args.n_steps}枚 出力先: ./output/")
 

@@ -84,6 +84,12 @@ def parse_args():
     parser.add_argument("--push", action="store_true",
                         help="生成したPNG/Markdownをgit commitしてGitHubへpushする")
     parser.add_argument("--show", action="store_true", help="保存後に画面表示する")
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 

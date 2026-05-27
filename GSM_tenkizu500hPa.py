@@ -142,6 +142,12 @@ def parse_args():
                         help='作成する枚数（6h間隔、デフォルト: 1）')
     parser.add_argument('level',     type=int,   nargs='?', default=500,
                         help='気圧面 hPa（デフォルト: 500）')
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 

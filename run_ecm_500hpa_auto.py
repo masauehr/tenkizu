@@ -67,6 +67,12 @@ def parse_args():
                         help="連続枚数（6h間隔。省略時はkeyモード: FT=0,12,24,36,48h）")
     parser.add_argument("--start-ft",   type=int, default=0,
                         help="--steps 使用時の開始予報時間（時間数、デフォルト: 0）")
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 

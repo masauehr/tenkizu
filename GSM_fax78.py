@@ -147,6 +147,12 @@ def parse_args():
                         help='発散気圧面 hPa（デフォルト: 700）')
     parser.add_argument('--level-t',    type=int, default=850,
                         help='気温・風気圧面 hPa（デフォルト: 850）')
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 

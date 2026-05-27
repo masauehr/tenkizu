@@ -96,6 +96,12 @@ def parse_args():
     parser.add_argument('n_steps',   type=int, nargs='?', default=1, help='作成する枚数（6h間隔）')
     parser.add_argument('pre_top',   type=int, nargs='?', default=300, help='上層気圧面 hPa（デフォルト: 300）')
     parser.add_argument('pre_low',   type=int, nargs='?', default=850, help='下層Top気圧面 hPa（デフォルト: 850）')
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 

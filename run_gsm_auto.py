@@ -121,6 +121,12 @@ def parse_args():
         "--start-ft", type=str, default="0000",
         help="--steps 使用時の開始予報時間 DDHH形式（デフォルト: 0000）",
     )
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 

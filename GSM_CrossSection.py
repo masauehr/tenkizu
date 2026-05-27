@@ -104,6 +104,12 @@ def parse_args():
     parser.add_argument('--lon-s',     type=float, default=130.0, dest='lon_start', help='断面始点経度（デフォルト: 130.0）')
     parser.add_argument('--lon-e',     type=float, default=130.0, dest='lon_end',   help='断面終点経度（デフォルト: 130.0）')
     parser.add_argument('--flag-wind', type=int,   default=1,     dest='flag_wind', help='風の表示方法 0=断面平行/垂直 1=UV風（デフォルト: 1）')
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 

@@ -365,6 +365,12 @@ def parse_args() -> argparse.Namespace:
         '--push', action='store_true',
         help='--report と併用: 生成後に git add → commit → push する',
     )
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 

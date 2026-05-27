@@ -69,6 +69,12 @@ Examples:
     parser.add_argument("--map-south", type=float, default=20.0, help="plot area south latitude")
     parser.add_argument("--map-north", type=float, default=50.0, help="plot area north latitude")
     parser.add_argument("--barb-step", type=int, default=3, help="ageostrophic wind barb thinning")
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 

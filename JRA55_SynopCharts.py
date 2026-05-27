@@ -47,6 +47,12 @@ def parse_args():
     parser.add_argument("--config", default="./jra55_config.ini")
     parser.add_argument("--user", default=os.environ.get("JRA55_USER"))
     parser.add_argument("--password", default=os.environ.get("JRA55_PASSWORD"))
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 

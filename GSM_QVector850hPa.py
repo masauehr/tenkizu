@@ -88,6 +88,12 @@ def parse_args():
     parser.add_argument('start_ft',  type=str, nargs='?', default='0000', help='開始予報時間 DDHH形式')
     parser.add_argument('n_steps',   type=int, nargs='?', default=1, help='作成する枚数（6h間隔）')
     parser.add_argument('level',     type=int, nargs='?', default=850, help='気圧面 hPa（デフォルト: 850）')
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 

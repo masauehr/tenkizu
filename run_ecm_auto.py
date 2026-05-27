@@ -120,6 +120,12 @@ def parse_args():
         "--tp", action="store_true",
         help="ECM_SurfacePressure.py に --tp を渡す（積算降水量シェード、FT>0のみ有効）",
     )
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 
