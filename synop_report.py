@@ -28,9 +28,41 @@ import subprocess
 import shutil
 import argparse
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
+import requests
 
 ALL_CHARTS = ["jet", "fax57", "fax78", "ept", "srf"]
+
+
+def ft_heading(ft_h, init_dt):
+    """FT番号 + 予想時刻JST（UTC+9）の見出し文字列を返す"""
+    valid_jst = init_dt + timedelta(hours=ft_h + 9)
+    jst_label = f"{valid_jst.month}/{valid_jst.day} {valid_jst.hour}時JST"
+    return f"#### FT={ft_h}h ({jst_label})"
+
+
+def add_pair_section(lines, title, gsm_dict, ecm_dict, init_dt,
+                     gsm_label="GSM", ecm_label="ECMWF"):
+    """FTごとにGSM/ECMを横並びテーブルでMarkdownに追加する"""
+    if not gsm_dict and not ecm_dict:
+        return
+    lines += [f"## {title}", ""]
+    for ft_h in sorted(set(gsm_dict) | set(ecm_dict)):
+        g = gsm_dict.get(ft_h)
+        e = ecm_dict.get(ft_h)
+        lines += [ft_heading(ft_h, init_dt), ""]
+        if g and e:
+            lines += [
+                f"| {gsm_label} | {ecm_label} |",
+                "|:---:|:---:|",
+                f"| ![{gsm_label} FT={ft_h}h](./{g}) | ![{ecm_label} FT={ft_h}h](./{e}) |",
+                "",
+            ]
+        elif g:
+            lines += [f"![{gsm_label} FT={ft_h}h](./{g})", ""]
+        else:
+            lines += [f"![{ecm_label} FT={ft_h}h](./{e})", ""]
+    lines += ["---", ""]
 
 # 時間プリセット: n_steps の位置引数に名前で指定する
 PRESETS = {
@@ -77,6 +109,12 @@ def parse_args():
                         help='ECMWFも実行する（省略時はGSMのみ。Jetは常にGSMのみ）')
     parser.add_argument('--push',      action='store_true',
                         help='GitHub へ git push する（省略時はローカル保存のみ）')
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 
@@ -111,6 +149,59 @@ def copy_png(src, report_dir, label):
     else:
         print(f"  ※ 見つかりません: {src.name} ({label})")
         return None
+
+
+GSM_BASE_URL = "http://database.rish.kyoto-u.ac.jp/arch/jmadata/data/gpv/original"
+ECM_BASE_URL = "https://data.ecmwf.int/forecasts"
+HTTP_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; DataChecker/1.0)"}
+
+
+def check_data_files(init_str, ft_list_h, run_gsm, run_ecm):
+    """各サーバーに必要なGRIB2ファイルが存在するか HEAD リクエストで確認する。"""
+    i_year  = int(init_str[0:4])
+    i_month = int(init_str[4:6])
+    i_day   = int(init_str[6:8])
+    i_hourZ = int(init_str[8:10])
+    ecm_sub = "oper" if i_hourZ in (0, 12) else "scda"
+
+    missing = []
+    for ft_h in ft_list_h:
+        if run_gsm:
+            ft_ddhh = hours_to_ddhh(ft_h)
+            fn  = f"Z__C_RJTD_{init_str}0000_GSM_GPV_Rgl_FD{ft_ddhh:04d}_grib2.bin"
+            url = f"{GSM_BASE_URL}/{i_year}/{i_month:02d}/{i_day:02d}/{fn}"
+            try:
+                r = requests.head(url, headers=HTTP_HEADERS, timeout=15)
+                if r.status_code == 200:
+                    print(f"  GSM FT={ft_h:3d}h: OK")
+                else:
+                    print(f"  GSM FT={ft_h:3d}h: NG (HTTP {r.status_code})")
+                    missing.append(f"    {url}")
+            except requests.RequestException as e:
+                print(f"  GSM FT={ft_h:3d}h: NG (接続エラー: {e})")
+                missing.append(f"    {url}")
+
+        if run_ecm:
+            fn  = f"{init_str}0000-{ft_h}h-{ecm_sub}-fc.grib2"
+            url = (f"{ECM_BASE_URL}/{i_year:04d}{i_month:02d}{i_day:02d}"
+                   f"/{i_hourZ:02d}z/ifs/0p25/{ecm_sub}/{fn}")
+            try:
+                r = requests.head(url, headers=HTTP_HEADERS, timeout=15)
+                if r.status_code == 200:
+                    print(f"  ECM FT={ft_h:3d}h: OK")
+                else:
+                    print(f"  ECM FT={ft_h:3d}h: NG (HTTP {r.status_code})")
+                    missing.append(f"    {url}")
+            except requests.RequestException as e:
+                print(f"  ECM FT={ft_h:3d}h: NG (接続エラー: {e})")
+                missing.append(f"    {url}")
+
+    if missing:
+        print("\nエラー: 以下のファイルがサーバーに存在しません。処理を中止します。")
+        for m in missing:
+            print(m)
+        return False
+    return True
 
 
 def main():
@@ -158,9 +249,15 @@ def main():
     print(f" 種別: {chart_label}")
     print(f"{'='*60}\n")
 
-    # ---- FT ごとに 1 枚ずつ各スクリプトを実行 ----
     ft_list = [start_ft_h + i * interval for i in range(n_steps)]
 
+    # ---- Step 0: データファイル確認 ----
+    print("--- Step 0: データファイル確認 ---")
+    if not check_data_files(init_str, ft_list, True, with_ecm):
+        sys.exit(1)
+    print("  全ファイル確認OK\n")
+
+    # ---- FT ごとに 1 枚ずつ各スクリプトを実行 ----
     for ft_h in ft_list:
         ft_str = f"{hours_to_ddhh(ft_h):04d}"
         print(f"=== FT={ft_h}h ===")
@@ -304,37 +401,19 @@ def main():
     ]
 
     # Jet 300hPa（GSM: Isotach+非地衡風, ECM: 高度+風矢羽）
-    if collected["jet"] or collected["ecm_jet"]:
-        lines += ["## Jet 300hPa", ""]
-        if collected["jet"]:
-            lines += ["### GSM（Isotach・非地衡風・高度）", ""]
-            for ft_h, fname in sorted(collected["jet"].items()):
-                lines += [f"#### FT={ft_h}h", "", f"![GSM Jet 300hPa FT={ft_h}h](./{fname})", ""]
-        if collected["ecm_jet"]:
-            lines += ["### ECMWF（高度・風矢羽）", ""]
-            for ft_h, fname in sorted(collected["ecm_jet"].items()):
-                lines += [f"#### FT={ft_h}h", "", f"![ECM 300hPa FT={ft_h}h](./{fname})", ""]
-        lines += ["---", ""]
+    add_pair_section(lines, "Jet 300hPa",
+                     collected["jet"], collected["ecm_jet"], dt_obj,
+                     "GSM（Isotach・非地衡風・高度）", "ECMWF（高度・風矢羽）")
 
-    # GSM/ECM を並べて表示するセクション
+    # GSM/ECM を横並びテーブルで表示するセクション
     chart_sections = [
-        ("fax57",     "ecm_fax57", "500/700hPa（等高度線・渦度・風）"),
-        ("fax78",     "ecm_fax78", "700/850hPa（等高度線・相当温位・風）"),
-        ("ept",       "ecm_ept",   "850hPa 相当温位・風矢羽"),
-        ("srf",       "ecm_srf",   "地上気圧・10m風・2m気温"),
+        ("fax57",  "ecm_fax57", "500/700hPa（等高度線・渦度・風）"),
+        ("fax78",  "ecm_fax78", "700/850hPa（等高度線・相当温位・風）"),
+        ("ept",    "ecm_ept",   "850hPa 相当温位・風矢羽"),
+        ("srf",    "ecm_srf",   "地上気圧・10m風・2m気温"),
     ]
     for gsm_key, ecm_key, title in chart_sections:
-        if collected[gsm_key] or collected[ecm_key]:
-            lines += [f"## {title}", ""]
-            if collected[gsm_key]:
-                lines += ["### GSM", ""]
-                for ft_h, fname in sorted(collected[gsm_key].items()):
-                    lines += [f"#### FT={ft_h}h", "", f"![GSM {title} FT={ft_h}h](./{fname})", ""]
-            if collected[ecm_key]:
-                lines += ["### ECMWF", ""]
-                for ft_h, fname in sorted(collected[ecm_key].items()):
-                    lines += [f"#### FT={ft_h}h", "", f"![ECM {title} FT={ft_h}h](./{fname})", ""]
-            lines += ["---", ""]
+        add_pair_section(lines, title, collected[gsm_key], collected[ecm_key], dt_obj)
 
     md_name = f"synop_report_{ft_label}.md"
     md_path = report_dir / md_name

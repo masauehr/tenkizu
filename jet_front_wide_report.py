@@ -29,6 +29,7 @@ import shutil
 import argparse
 from pathlib import Path
 from datetime import datetime
+import requests
 
 # ワイド版描画領域 [lonW, lonE, latS, latN]
 # 東西2倍・南北1.5倍（中心固定）→ さらに北側1/3を南側に振り替え
@@ -83,6 +84,12 @@ def parse_args():
                         help='GitHub へ git push する（省略時はローカル保存のみ）')
     parser.add_argument('--avg_steps', type=int, default=1,
                         help='平均するFT個数（1=平均なし、n指定時は6h間隔でn個を平均して1枚、デフォルト: 1）')
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 
@@ -117,6 +124,59 @@ def copy_png(src, report_dir, label):
     else:
         print(f"  ※ 見つかりません: {src.name} ({label})")
         return None
+
+
+GSM_BASE_URL = "http://database.rish.kyoto-u.ac.jp/arch/jmadata/data/gpv/original"
+ECM_BASE_URL = "https://data.ecmwf.int/forecasts"
+HTTP_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; DataChecker/1.0)"}
+
+
+def check_data_files(init_str, ft_list_h, run_gsm, run_ecm):
+    """各サーバーに必要なGRIB2ファイルが存在するか HEAD リクエストで確認する。"""
+    i_year  = int(init_str[0:4])
+    i_month = int(init_str[4:6])
+    i_day   = int(init_str[6:8])
+    i_hourZ = int(init_str[8:10])
+    ecm_sub = "oper" if i_hourZ in (0, 12) else "scda"
+
+    missing = []
+    for ft_h in ft_list_h:
+        if run_gsm:
+            ft_ddhh = hours_to_ddhh(ft_h)
+            fn  = f"Z__C_RJTD_{init_str}0000_GSM_GPV_Rgl_FD{ft_ddhh:04d}_grib2.bin"
+            url = f"{GSM_BASE_URL}/{i_year}/{i_month:02d}/{i_day:02d}/{fn}"
+            try:
+                r = requests.head(url, headers=HTTP_HEADERS, timeout=15)
+                if r.status_code == 200:
+                    print(f"  GSM FT={ft_h:3d}h: OK")
+                else:
+                    print(f"  GSM FT={ft_h:3d}h: NG (HTTP {r.status_code})")
+                    missing.append(f"    {url}")
+            except requests.RequestException as e:
+                print(f"  GSM FT={ft_h:3d}h: NG (接続エラー: {e})")
+                missing.append(f"    {url}")
+
+        if run_ecm:
+            fn  = f"{init_str}0000-{ft_h}h-{ecm_sub}-fc.grib2"
+            url = (f"{ECM_BASE_URL}/{i_year:04d}{i_month:02d}{i_day:02d}"
+                   f"/{i_hourZ:02d}z/ifs/0p25/{ecm_sub}/{fn}")
+            try:
+                r = requests.head(url, headers=HTTP_HEADERS, timeout=15)
+                if r.status_code == 200:
+                    print(f"  ECM FT={ft_h:3d}h: OK")
+                else:
+                    print(f"  ECM FT={ft_h:3d}h: NG (HTTP {r.status_code})")
+                    missing.append(f"    {url}")
+            except requests.RequestException as e:
+                print(f"  ECM FT={ft_h:3d}h: NG (接続エラー: {e})")
+                missing.append(f"    {url}")
+
+    if missing:
+        print("\nエラー: 以下のファイルがサーバーに存在しません。処理を中止します。")
+        for m in missing:
+            print(m)
+        return False
+    return True
 
 
 def area_str(area):
@@ -183,6 +243,16 @@ def main():
     print(f" 初期時刻: {init_str} UTC  開始FT: {start_ft_h}h  枚数: {n_steps}{avg_info}")
     print(f" 上層域: {AREA_UPPER}  850hPa域: {AREA_EPT}")
     print(f"{'='*60}\n")
+
+    # ---- Step 0: データファイル確認 ----
+    if avg_steps > 1:
+        ft_list_check = [start_ft_h + i * 6 for i in range(n_steps * avg_steps)]
+    else:
+        ft_list_check = [start_ft_h + i * interval for i in range(n_steps)]
+    print("--- Step 0: データファイル確認 ---")
+    if not check_data_files(init_str, ft_list_check, True, with_ecm):
+        sys.exit(1)
+    print("  全ファイル確認OK\n")
 
     # ---- スクリプト実行 ----
     if avg_steps > 1:

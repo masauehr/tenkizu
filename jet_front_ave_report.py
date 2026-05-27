@@ -145,6 +145,12 @@ def parse_args():
                         help='ECMWFも実行する（省略時はGSMのみ）')
     parser.add_argument('--push',    action='store_true',
                         help='GitHub へ git push する（省略時はローカル保存のみ）')
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 
@@ -154,6 +160,54 @@ def build_init_times(newest_dt, n_days):
     """最新初期時刻から12h間隔で遡った n_days*2 個の datetime リストを返す（新しい順）"""
     n_steps = n_days * 2
     return [newest_dt - timedelta(hours=i * 12) for i in range(n_steps)]
+
+
+def check_data_files(init_times, run_gsm, run_ecm):
+    """各初期時刻のFT=0hデータがサーバーに存在するか HEAD リクエストで確認する。"""
+    missing = []
+    for dt in init_times:
+        i_str   = dt.strftime('%Y%m%d%H')
+        i_year  = dt.year
+        i_month = dt.month
+        i_day   = dt.day
+        i_hourZ = dt.hour
+        ecm_sub = "oper" if i_hourZ in (0, 12) else "scda"
+
+        if run_gsm:
+            fn  = f"Z__C_RJTD_{i_str}0000_GSM_GPV_Rgl_FD0000_grib2.bin"
+            url = f"{BASE_URL_GSM}/{i_year}/{i_month:02d}/{i_day:02d}/{fn}"
+            try:
+                r = requests.head(url, headers=HEADERS, timeout=15)
+                if r.status_code == 200:
+                    print(f"  GSM {i_str} FT=0h: OK")
+                else:
+                    print(f"  GSM {i_str} FT=0h: NG (HTTP {r.status_code})")
+                    missing.append(f"    {url}")
+            except requests.RequestException as e:
+                print(f"  GSM {i_str} FT=0h: NG (接続エラー: {e})")
+                missing.append(f"    {url}")
+
+        if run_ecm:
+            fn  = f"{i_str}0000-0h-{ecm_sub}-fc.grib2"
+            url = (f"{BASE_URL_ECM}/{i_year:04d}{i_month:02d}{i_day:02d}"
+                   f"/{i_hourZ:02d}z/ifs/0p25/{ecm_sub}/{fn}")
+            try:
+                r = requests.head(url, headers=HEADERS, timeout=15)
+                if r.status_code == 200:
+                    print(f"  ECM {i_str} FT=0h: OK")
+                else:
+                    print(f"  ECM {i_str} FT=0h: NG (HTTP {r.status_code})")
+                    missing.append(f"    {url}")
+            except requests.RequestException as e:
+                print(f"  ECM {i_str} FT=0h: NG (接続エラー: {e})")
+                missing.append(f"    {url}")
+
+    if missing:
+        print("\nエラー: 以下のファイルがサーバーに存在しません。処理を中止します。")
+        for m in missing:
+            print(m)
+        return False
+    return True
 
 
 def run_git(cmd, cwd):
@@ -698,6 +752,12 @@ def main():
     for dt in init_times:
         print(f"  {dt.strftime('%Y%m%d %HUTC')} FT=0h")
     print()
+
+    # ---- Step 0: データファイル確認 ----
+    print("--- Step 0: データファイル確認 ---")
+    if not check_data_files(init_times, True, with_ecm):
+        sys.exit(1)
+    print("  全ファイル確認OK\n")
 
     collected = {
         "upper_gsm": {lev: None for lev in levels},
