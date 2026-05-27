@@ -98,9 +98,11 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 使用例:
-  python ECM_EPT850hPa.py 2023052318 0 1     # FT=0h 1枚
-  python ECM_EPT850hPa.py 2023052318 0 5     # FT=0,6,12,18,24h 5枚
-  python ECM_EPT850hPa.py 2023052312 0 3 850 # 850hPa
+  python ECM_EPT850hPa.py 2023052318 0 1              # FT=0h 1枚
+  python ECM_EPT850hPa.py 2023052318 0 5              # FT=0,6,12,18,24h 5枚
+  python ECM_EPT850hPa.py 2023052312 0 3 850          # 850hPa
+  python ECM_EPT850hPa.py 2023052318 0 1 --smooth-size 5  # スムージング5×5
+  python ECM_EPT850hPa.py 2023052318 0 1 --wind-step 8    # 風矢羽8格子おき
 
 引数説明:
   init_time: 初期時刻 YYYYMMDDHH（UTC）
@@ -118,10 +120,20 @@ def parse_args():
                         help='描画範囲 lonW lonE latS latN（デフォルト: 115 151 20 50）')
     parser.add_argument('--avg_steps', type=int, default=1,
                         help='平均するFT個数（1=平均なし、n指定時は6h間隔でn個を平均して1枚、デフォルト: 1）')
+    parser.add_argument('--smooth-size', type=int, default=3,
+                        help='uniform_filterのサイズ（デフォルト: 3）')
+    parser.add_argument('--wind-step', type=int, default=5,
+                        help='風矢羽の間引き格子数（デフォルト: 5）')
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 
-def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=None):
+def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=None, smooth_size=3, wind_step=5):
     # ECMWFファイル名を構築
     if i_hourZ in (0, 12):
         ecm_fn = f"{i_year:04d}{i_month:02d}{i_day:02d}{i_hourZ:02d}0000-{ft_hours:d}h-oper-fc.grib2"
@@ -150,8 +162,8 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=
     valTm, latTm, lonTm = grbTm.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
     valRh, latRh, lonRh = grbRh.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
 
-    # ECM(0.25°)をGSM並みの粗さに平滑化（3×3格子平均）
-    _s = 3
+    # ECM(0.25°)を平滑化
+    _s = smooth_size
     valHt = uniform_filter(valHt, size=_s)
     valWu = uniform_filter(valWu, size=_s)
     valWv = uniform_filter(valWv, size=_s)
@@ -237,7 +249,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=
     gl.ylocator = mticker.FixedLocator(yticks)
 
     # 風矢羽
-    wind_slice = (slice(None, None, 5), slice(None, None, 5))
+    wind_slice = (slice(None, None, wind_step), slice(None, None, wind_step))
     ax.barbs(dsp['lon'][wind_slice[0]], dsp['lat'][wind_slice[1]],
              dsp['u_wind'].values[wind_slice] * 1.944,
              dsp['v_wind'].values[wind_slice] * 1.944,
@@ -256,7 +268,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=
     return True
 
 
-def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, output_dir, area=None):
+def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, output_dir, area=None, smooth_size=3, wind_step=5):
     """avg_steps個のFT（6h間隔）の生データを平均してEPTを計算し1枚の天気図を生成する"""
     ft_list = [batch_start_h + i * 6 for i in range(avg_steps)]
     batch_end_h = ft_list[-1]
@@ -293,7 +305,7 @@ def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, o
         _valTm, latTm, lonTm  = grbTm.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
         _valRh, _, _          = grbRh.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
 
-        _s = 3
+        _s = smooth_size
         _valHt = uniform_filter(_valHt, size=_s)
         _valWu = uniform_filter(_valWu, size=_s)
         _valWv = uniform_filter(_valWv, size=_s)
@@ -393,7 +405,7 @@ def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, o
     gl.xlocator = mticker.FixedLocator(xticks)
     gl.ylocator = mticker.FixedLocator(yticks)
 
-    wind_slice = (slice(None, None, 5), slice(None, None, 5))
+    wind_slice = (slice(None, None, wind_step), slice(None, None, wind_step))
     ax.barbs(dsp['lon'][wind_slice[0]], dsp['lat'][wind_slice[1]],
              dsp['u_wind'].values[wind_slice] * 1.944,
              dsp['v_wind'].values[wind_slice] * 1.944,
@@ -435,13 +447,15 @@ def main():
         success = 0
         for step_i in range(args.n_steps):
             batch_start_h = args.start_ft + step_i * (6 * args.avg_steps)
-            if plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, args.avg_steps, args.level, "./output", area=args.area):
+            if plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, args.avg_steps, args.level, "./output",
+                        area=args.area, smooth_size=args.smooth_size, wind_step=args.wind_step):
                 success += 1
         print(f"\n完了: {success}/{args.n_steps}枚 出力先: ./output/")
     else:
         success = 0
         for ft in ft_list:
-            if plot_one(i_year, i_month, i_day, i_hourZ, ft, args.level, "./output", area=args.area):
+            if plot_one(i_year, i_month, i_day, i_hourZ, ft, args.level, "./output",
+                        area=args.area, smooth_size=args.smooth_size, wind_step=args.wind_step):
                 success += 1
         print(f"\n完了: {success}/{args.n_steps}枚 出力先: ./output/")
 

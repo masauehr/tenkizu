@@ -127,9 +127,10 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 使用例:
-  python ECM_tenkizu500hPa.py 2026041200 0 1     # FT=0h 1枚
-  python ECM_tenkizu500hPa.py 2026041200 0 5     # FT=0,6,12,18,24h 5枚
-  python ECM_tenkizu500hPa.py 2026041200 12 1    # FT=12h 1枚
+  python ECM_tenkizu500hPa.py 2026041200 0 1              # FT=0h 1枚
+  python ECM_tenkizu500hPa.py 2026041200 0 5              # FT=0,6,12,18,24h 5枚
+  python ECM_tenkizu500hPa.py 2026041200 12 1             # FT=12h 1枚
+  python ECM_tenkizu500hPa.py 2026041200 0 1 --smooth-size 5  # スムージング5×5
         """
     )
     parser.add_argument('init_time', type=str, help='初期時刻 YYYYMMDDHH（UTC）')
@@ -139,10 +140,18 @@ def parse_args():
                         help='作成する枚数（6h間隔、デフォルト: 1）')
     parser.add_argument('level',     type=int, nargs='?', default=500,
                         help='気圧面 hPa（デフォルト: 500）')
+    parser.add_argument('--smooth-size', type=int, default=3,
+                        help='uniform_filterのサイズ（デフォルト: 3）')
+
+    # ? / -? / --? でヘルプ表示
+    if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
+        parser.print_help()
+        sys.exit(0)
+
     return parser.parse_args()
 
 
-def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir):
+def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, smooth_size=3):
     if i_hourZ in (0, 12):
         ecm_fn = f"{i_year:04d}{i_month:02d}{i_day:02d}{i_hourZ:02d}0000-{ft_hours:d}h-oper-fc.grib2"
     else:
@@ -166,8 +175,8 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir):
     valWu, latWu, lonWu = grbWu.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
     valWv, latWv, lonWv = grbWv.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
 
-    # ECM(0.25°)をGSM並みの粗さに平滑化（3×3格子平均）
-    _s = 3
+    # ECM(0.25°)を平滑化
+    _s = smooth_size
     valHt = uniform_filter(valHt, size=_s)
     valWu = uniform_filter(valWu, size=_s)
     valWv = uniform_filter(valWv, size=_s)
@@ -303,7 +312,8 @@ def main():
 
     success = 0
     for ft_h in ft_list:
-        if plot_one(i_year, i_month, i_day, i_hourZ, ft_h, args.level, "./output"):
+        if plot_one(i_year, i_month, i_day, i_hourZ, ft_h, args.level, "./output",
+                    smooth_size=args.smooth_size):
             success += 1
     print(f"\n完了: {success}/{args.n_steps}枚 出力先: ./output/")
 
