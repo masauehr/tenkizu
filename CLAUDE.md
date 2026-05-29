@@ -173,7 +173,7 @@ python synop_report.py --?
 
 ## JRA-55 認証設定
 
-JRA-55 データのダウンロードには RISH の認証が必要。
+JRA-55 データのダウンロードには 京大RISH の認証が必要。
 
 ```ini
 # jra55_config.ini（.gitignoreで除外済み）
@@ -207,7 +207,7 @@ export JRA55_PASSWORD=your_password
 
 | モデル | 無償リアルタイムGRIB2 | 取得しやすさ |
 |--------|:--------------------:|:----------:|
-| GSM（日本） | ✓ RISH | ◎ |
+| GSM（日本） | ✓ 京大RISH | ◎ |
 | GFS（米国） | ✓ NOMADS | ◎ |
 | ECMWF（欧州） | ✓ Open Data（5日分） | ○ |
 | UKMET（英国） | ✗ | ✗ |

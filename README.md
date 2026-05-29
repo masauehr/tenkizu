@@ -10,7 +10,7 @@ GSM（全球モデル）・ECMWF GRIB2 データから各種高層・地上天�
 
 ## 概要
 
-- **対応データ**: GSM（RISH、過去全期間無償）・ECMWF（Open Data、最新5日分のみ無償）・JRA-55 再解析（RISH、認証必要）・Wyoming高層ゾンデ
+- **対応データ**: GSM（京大RISH、過去全期間無償）・ECMWF（Open Data、最新5日分のみ無償）・JRA-55 再解析（京大RISH、認証必要）・Wyoming高層ゾンデ
 - **天気図スクリプト**: 18種類（GSM 10本・ECM 6本・JRA-55 2本）
 - **エマグラムスクリプト**: 3種類（Wyoming ゾンデ・GSM/ECM GRIB2・JRA-55 NetCDF）
 - **レポート生成**: 7本（Markdown+PNG → `reports/` に保存、`--push` でGitHub push）
@@ -141,7 +141,7 @@ python synop_report.py --?
 最新 init_time を自動検索してデータ取得・一括生成する。
 
 ```bash
-# GSM系（RISHサーバーから自動DL）
+# GSM系（京大RISHサーバーから自動DL）
 python run_gsm_auto.py                                              # 最新 12hプリセット
 python run_gsm_auto.py --steps 5                                   # 最新 FT=0〜24h
 python run_gsm_auto.py --init-time 2026041200                      # init_time指定
@@ -275,7 +275,7 @@ python jet_front_ave_report.py 2026050600 3 --ecm-only               # ECMのみ
 python jet_front_ave_report.py 2026050600 5 --levels 100 50 --ecm --push
 ```
 
-> ECMWFは最新5日分のみ。長期平均にはGSM（RISHアーカイブ）を使用すること。
+> ECMWFは最新5日分のみ。長期平均にはGSM（京大RISHアーカイブ）を使用すること。
 
 生成物: `reports/{init_str}-ave/jet_front_ave_report_{n}d.md`
 
@@ -354,7 +354,7 @@ bash run_all_charts.sh 2026041200 0000 5 --ecm             # GSM+ECM
 
 ### GSM系個別スクリプト
 
-起動時に `data_gsm/` になければ自動でRISHサーバーからダウンロード。
+起動時に `data_gsm/` になければ自動で京大RISHサーバーからダウンロード。
 
 | スクリプト | 主な描画要素 |
 |-----------|------------|
@@ -479,7 +479,7 @@ python download_gsm.py --date 20171210 --ft 0000 0012 0100
 
 ## JRA-55 天気図作成
 
-JRA-55 再解析データ（京都大学RISHアーカイブ）から、過去事例の解析時刻ベースの天気図を作成できる。  
+JRA-55 再解析データ（京大RISHアーカイブ）から、過去事例の解析時刻ベースの天気図を作成できる。  
 GSM/ECMWF の予報時間 `FT` とは異なり、JRA-55 は `YYYYMMDDHH` の解析時刻を直接指定する。
 
 ### 認証設定
@@ -548,7 +548,7 @@ python JRA55_JetDivergence.py 1961071518 --level 300 --data-dir data/Jra55
 
 使用データ:
 
-| 用途 | 変数 | RISH配下 |
+| 用途 | 変数 | 京大RISH配下 |
 |------|------|----------|
 | 上層高度 | `HGT` | `data/isobaric_1.25d/HGT/{YYYY}/HGT_{YYYYMM}.nc` |
 | 上層風 | `UGRD`, `VGRD` | `data/isobaric_1.25d/{UGRD,VGRD}/{YYYY}/...` |
@@ -611,7 +611,7 @@ python make_pptx2.py INIT_TIME  # 補完3グループ（不安定域・断面図
 
 | モデル | 無償リアルタイムGRIB2 | 取得しやすさ |
 |--------|:--------------------:|:----------:|
-| GSM（日本） | ✓ RISH | ◎ |
+| GSM（日本） | ✓ 京大RISH | ◎ |
 | GFS（米国） | ✓ NOMADS | ◎ |
 | ECMWF（欧州） | ✓ Open Data（5日分） | ○ |
 | UKMET（英国） | ✗ | ✗ |
@@ -628,7 +628,7 @@ JRA-55（再解析）: 無償・認証必要・リアルタイムなし・1958�
 - 黒良さんのNote: https://note.com/rkurora/n/n200fdd8f1aa1
 - 黒良さんのNote（JRA-55）: https://note.com/rkurora/n/n568e9ac95e3d
 - RISHデータベース: http://database.rish.kyoto-u.ac.jp/arch/jmadata/
-- RISH JRA-55アーカイブ: https://database.rish.kyoto-u.ac.jp/arch/jra55/
+- 京大京大RISH JRA-55アーカイブ: https://database.rish.kyoto-u.ac.jp/arch/jra55/
 - Wyoming Upper Air: https://weather.uwyo.edu/upperair/sounding.html
 - ECMWF Open Data: https://www.ecmwf.int/en/forecasts/datasets/open-data
 - Copernicus CDS（過去ECMWFデータ）: https://cds.climate.copernicus.eu
@@ -638,7 +638,7 @@ JRA-55（再解析）: 無償・認証必要・リアルタイムなし・1958�
 ## JRA-55 エマグラム・温位エマグラム
 
 `JRA55_Emagram.py` は、JRA-55 等圧面 NetCDF から任意地点のエマグラムと温位エマグラムを作成するスクリプト。  
-`JRA55_SynopCharts.py` と同じ RISH JRA-55 アーカイブ、認証設定、ローカルキャッシュ構造を使用する。
+`JRA55_SynopCharts.py` と同じ 京大京大RISH JRA-55 アーカイブ、認証設定、ローカルキャッシュ構造を使用する。
 
 ### 作業結果
 
@@ -668,7 +668,7 @@ JRA-55（再解析）: 無償・認証必要・リアルタイムなし・1958�
 | `VGRD` | 南北風 | `data/Jra55/VGRD/YYYY/VGRD_YYYYMM.nc` |
 | `HGT` | ジオポテンシャル高度 | `data/Jra55/HGT/YYYY/HGT_YYYYMM.nc` |
 
-対象月のファイルが `data/Jra55/` に存在しない場合は、RISH JRA-55 アーカイブから自動ダウンロードする。  
+対象月のファイルが `data/Jra55/` に存在しない場合は、京大RISH JRA-55 アーカイブから自動ダウンロードする。  
 認証情報は `jra55_config.ini` の `[jra55]` セクション、または環境変数 `JRA55_USER` / `JRA55_PASSWORD` を使用する。
 
 ### 実行方法
@@ -762,7 +762,7 @@ GSM:
 data_gsm/Z__C_RJTD_YYYYMMDDHH0000_GSM_GPV_Rgl_FDdddd_grib2.bin
 ```
 
-ファイルがない場合は RISH の GSM GPV アーカイブから取得を試みる。
+ファイルがない場合は 京大RISH の GSM GPV アーカイブから取得を試みる。
 
 ECMWF:
 
