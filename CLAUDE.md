@@ -52,6 +52,12 @@ conda activate met_env       # JRA-55 系
 | `ECM_SurfacePressure.py` | 地上気圧（±可降水量/積算降水量） |
 | `ECM_100hPa.py` | 任意気圧面 等高度線・ISOTAC・風矢羽 |
 
+### 天気図描画スクリプト（GFS系）
+
+| ファイル | 役割 |
+|--------|------|
+| `GFS_SurfacePressure.py` | 地上気圧・10m風・2m気温（NOMADS filter DL、`--area`/`--smooth-size`/`--wind-step` 対応） |
+
 ### 天気図描画スクリプト（JRA-55系）
 
 | ファイル | 役割 |
@@ -77,6 +83,7 @@ conda activate met_env       # JRA-55 系
 | `jet_front_ave_report.py` | 複数初期時刻平均レポート（梅雨入り判断） |
 | `upper_wind_report.py` | 上層天気図レポート |
 | `synop_report.py` | 総観天気図レポート（GSM/ECM） |
+| `typhoon-multi.py` | 地上気圧マルチモデル比較レポート（GSM/ECM/GFS、`--area` で描画範囲指定） |
 | `jra55_synop_report.py` | 総観天気図レポート（JRA-55） |
 | `jra55_jet_report.py` | ジェット・上層発散レポート（JRA-55） |
 
@@ -101,6 +108,7 @@ conda activate met_env       # JRA-55 系
 | `jra55_config.example.ini` | 認証設定の雛形（ダミー値） |
 | `data_gsm/` | GSM GRIB2データ（Gitから除外） |
 | `data/ecm/` | ECMWF GRIB2データ（Gitから除外） |
+| `data/gfs/` | GFS GRIB2データ（Gitから除外）。`gfs_{YYYYMMDDHH}_f{FFF:03d}_srf.grib2` |
 | `data/Jra55/` | JRA-55 NetCDFキャッシュ（Gitから除外） |
 | `output/` | 生成天気図PNG（Gitから除外） |
 | `reports/` | レポート保存先（PNG+Markdown） |
@@ -206,3 +214,5 @@ export JRA55_PASSWORD=your_password
 | 2026-05-12 | `emagram.py` 新規作成（Wyoming高層ゾンデ） |
 | 2026-05-13 | JRA-55対応追加（`JRA55_SynopCharts.py`・`JRA55_JetDivergence.py`・レポートスクリプト） |
 | 2026-05-13 | `JRA55_Emagram.py`・`GRIB2_Emagram.py` 新規作成（エマグラム全データ源対応） |
+| 2026-05-29 | `GFS_SurfacePressure.py` 新規作成（NOMADS filter DL、地上気圧描画） |
+| 2026-05-29 | `ECM_GSM_SurfacePressure.py` → `typhoon-multi.py` にリネーム。GFS対応・`--area` 追加 |

@@ -41,6 +41,7 @@ tenkizu/
 ├── ECM_Fax78.py            # ECMWF FAX78
 ├── ECM_SurfacePressure.py  # ECMWF 地上気圧（±可降水量/積算降水量）
 ├── ECM_100hPa.py           # ECMWF 任意気圧面 等高度線・ISOTAC・風矢羽
+├── GFS_SurfacePressure.py  # GFS 地上気圧（NOMADS filter DL）
 ├── JRA55_SynopCharts.py    # JRA-55 総観天気図セット（jet/fax57/fax78/ept/srf）
 ├── JRA55_JetDivergence.py  # JRA-55 300hPa ジェット・上層発散
 ├── jet_front_report.py     # レポート: 上層風・断面図・EPT850・地上気圧（GSM/ECM）
@@ -48,6 +49,7 @@ tenkizu/
 ├── jet_front_ave_report.py # レポート: 複数初期時刻FT=0h時間平均（梅雨入り判断）
 ├── upper_wind_report.py    # レポート: 上層天気図（任意気圧面）
 ├── synop_report.py         # レポート: 総観天気図（GSM/ECM）
+├── typhoon-multi.py        # レポート: 地上気圧マルチモデル比較（GSM/ECM/GFS、--area 対応）
 ├── jra55_synop_report.py   # レポート: 総観天気図（JRA-55）
 ├── jra55_jet_report.py     # レポート: ジェット・上層発散（JRA-55）
 ├── run_gsm_auto.py         # GSM系: 最新データ自動検索・一括生成
@@ -64,6 +66,7 @@ tenkizu/
 ├── reports/                # レポート保存先
 ├── data_gsm/               # GSM GRIB2データ（Gitから除外）
 ├── data/ecm/               # ECMWF GRIB2データ（Gitから除外）
+├── data/gfs/               # GFS GRIB2データ（Gitから除外）
 ├── data/Jra55/             # JRA-55 NetCDFキャッシュ（Gitから除外）
 └── output/                 # 生成天気図PNG（Gitから除外）
 ```
@@ -378,6 +381,57 @@ python ECM_SurfacePressure.py 2026041200 0 5 --tcwv   # 可降水量シェード
 python ECM_SurfacePressure.py 2026041200 6 3 --tp     # 積算降水量（FT>0必須）
 python ECM_100hPa.py 2026041200 0 5 50                # 50hPa 5枚
 ```
+
+---
+
+### GFS 個別スクリプト
+
+NOAA NOMADS filter から地表面変数のみ取得（数 MB）。直近 ~10 日分のみ無償。`START_FT` は**時間数**で指定。
+
+```bash
+python GFS_SurfacePressure.py INIT_TIME [start_ft] [n_steps] [--interval N]
+                              [--area LON_W LON_E LAT_S LAT_N]
+                              [--smooth-size N] [--wind-step N]
+```
+
+```bash
+python GFS_SurfacePressure.py 2026060212 0 1                        # FT=0h 1枚
+python GFS_SurfacePressure.py 2026060212 0 5                        # FT=0,6,12,18,24h 5枚
+python GFS_SurfacePressure.py 2026060212 0 1 --area 120 150 15 35   # 沖縄周辺
+```
+
+---
+
+### マルチモデル地上気圧比較（typhoon-multi.py）
+
+GSM・ECM・GFS の地上気圧天気図を横並び比較する Markdown レポートを生成。
+
+```bash
+python typhoon-multi.py INIT_TIME [start_ft] [n_steps] [--interval N]
+                        [--area LON_W LON_E LAT_S LAT_N]
+                        [--gsm | --ecm | --gfs] [--push]
+```
+
+| `--area` 指定例 | 範囲 |
+|----------------|------|
+| `108 156 5 45` | 東アジア（デフォルト） |
+| `120 150 15 35` | 沖縄周辺 |
+| `120 150 15 40` | 日本近海 |
+| `100 170 0 50` | 広域西太平洋 |
+| `90 180 -10 50` | 南シナ海〜北西太平洋 |
+
+```bash
+python typhoon-multi.py 2026060212                          # GSM+ECM+GFS FT=0h
+python typhoon-multi.py 2026060212 0000 12h                 # 12hプリセット
+python typhoon-multi.py 2026060212 --gsm                    # GSMのみ
+python typhoon-multi.py 2026060212 --ecm                    # ECMWFのみ
+python typhoon-multi.py 2026060212 --gfs                    # GFSのみ
+python typhoon-multi.py 2026060212 --area 120 150 15 35     # 沖縄周辺
+python typhoon-multi.py 2026060212 --area 100 170 0 50      # 広域西太平洋
+python typhoon-multi.py 2026060212 0000 3 --push            # pushあり
+```
+
+生成物: `reports/{init_str}/srf_comparison_{FTラベル}.md`
 
 ---
 
