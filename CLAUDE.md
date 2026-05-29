@@ -133,6 +133,8 @@ python <スクリプト名> INIT_TIME [START_FT [N_STEPS]] [オプション]
 | `START_FT` | 開始予報時間。**GSM=DDHH形式**・**ECM=時間数** | GSM:`0000` / ECM:`0` |
 | `N_STEPS` | 枚数またはプリセット（`12h` / `24h`） | `1` |
 | `--interval N` | FT間隔 時間数 | `6` |
+| `--ecm` | ECMWFも実行（GSM+ECM） | なし |
+| `--ecm-only` | ECMWFのみ実行（GSMをスキップ）※レポートスクリプトのみ | なし |
 
 ### JRA-55 スクリプト共通
 

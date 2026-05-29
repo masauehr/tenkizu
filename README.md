@@ -214,7 +214,7 @@ python emagram.py --site 石垣島 --report --push     # レポート生成 + Gi
 
 ```bash
 python jet_front_report.py INIT_TIME [start_ft] [n_steps] [--interval N]
-                           [--levels ...] [--ecm] [--push]
+                           [--levels ...] [--ecm] [--ecm-only] [--push]
                            [--lat-s N] [--lat-e N] [--lon-s N] [--lon-e N]
 ```
 
@@ -223,6 +223,7 @@ python jet_front_report.py 2026041200                           # GSMのみ FT=0
 python jet_front_report.py 2026041200 0000 12h                  # 12hプリセット
 python jet_front_report.py 2026041200 0000 5 --interval 12      # 12h間隔 5枚
 python jet_front_report.py 2026041200 --ecm --levels 100 50     # GSM+ECM 100+50hPa
+python jet_front_report.py 2026041200 --ecm-only                # ECMのみ（断面図スキップ）
 python jet_front_report.py 2026041200 --lat-s 45 --lat-e 25 --lon-s 125 --lon-e 135
 python jet_front_report.py 2026041200 0000 5 --push
 ```
@@ -238,13 +239,14 @@ python jet_front_report.py 2026041200 0000 5 --push
 
 ```bash
 python jet_front_wide_report.py INIT_TIME [start_ft] [n_steps] [--interval N]
-                                [--levels ...] [--ecm] [--avg_steps N] [--push]
+                                [--levels ...] [--ecm] [--ecm-only] [--avg_steps N] [--push]
 ```
 
 ```bash
 python jet_front_wide_report.py 2026041200                           # GSMのみ FT=0h
 python jet_front_wide_report.py 2026041200 0000 12h                  # 12hプリセット
 python jet_front_wide_report.py 2026041200 --levels 100 50           # 100+50hPa
+python jet_front_wide_report.py 2026041200 --ecm-only                # ECMのみ FT=0h
 python jet_front_wide_report.py 2026041200 0000 3 --avg_steps 4      # 4FT平均×3枚
 python jet_front_wide_report.py 2026041200 0000 5 --push
 ```
@@ -260,12 +262,13 @@ python jet_front_wide_report.py 2026041200 0000 5 --push
 複数初期時刻の FT=0h（解析値）を時間平均して描画。梅雨入り等の平均場把握に有効。
 
 ```bash
-python jet_front_ave_report.py INIT_TIME [n_days] [--levels ...] [--ecm] [--push]
+python jet_front_ave_report.py INIT_TIME [n_days] [--levels ...] [--ecm] [--ecm-only] [--push]
 ```
 
 ```bash
 python jet_front_ave_report.py 2026050600                               # 1日(2個)平均
 python jet_front_ave_report.py 2026050600 3                             # 3日(6個)平均
+python jet_front_ave_report.py 2026050600 3 --ecm-only               # ECMのみ 3日平均
 python jet_front_ave_report.py 2026050600 5 --levels 100 50 --ecm --push
 ```
 
@@ -279,12 +282,13 @@ python jet_front_ave_report.py 2026050600 5 --levels 100 50 --ecm --push
 
 ```bash
 python upper_wind_report.py INIT_TIME [start_ft] [n_steps] [--interval N]
-                            [--levels ...] [--ecm] [--push]
+                            [--levels ...] [--ecm] [--ecm-only] [--push]
 ```
 
 ```bash
 python upper_wind_report.py 2026041200                                # 100hPa FT=0h
 python upper_wind_report.py 2026041200 0000 12h --levels 100 50 --ecm
+python upper_wind_report.py 2026041200 --ecm-only                     # ECMのみ FT=0h
 python upper_wind_report.py 2026041200 0000 5 --push
 ```
 
@@ -298,13 +302,14 @@ Jet300hPa・Fax57・Fax78・EPT850hPa・地上気圧を一括生成。
 
 ```bash
 python synop_report.py INIT_TIME [start_ft] [n_steps] [--interval N]
-                       [--charts jet fax57 fax78 ept srf] [--ecm] [--push]
+                       [--charts jet fax57 fax78 ept srf] [--ecm] [--ecm-only] [--push]
 ```
 
 ```bash
 python synop_report.py 2026041200                               # 全種別 FT=0h
 python synop_report.py 2026041200 0000 12h                      # 12hプリセット
 python synop_report.py 2026041200 --ecm --charts ept srf        # 種別指定+ECM
+python synop_report.py 2026041200 --ecm-only                    # ECMのみ（Jetスキップ）
 python synop_report.py 2026041200 0000 5 --ecm --push
 ```
 
