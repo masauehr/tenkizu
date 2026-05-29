@@ -9,9 +9,9 @@
 
 #### FT=84h (6/1 21時JST)
 
-| GSM | GFS |
-|:---:|:---:|
-| ![GSM FT=84h](./2026052900_FT084h_GSM_SurfacePressure.png) | ![GFS FT=84h](./2026052900_FT084h_GFS_SurfacePressure.png) |
+| GSM | ECMWF | GFS |
+|:---:|:---:|:---:|
+| ![GSM FT=84h](./2026052900_FT084h_GSM_SurfacePressure.png) | ![ECMWF FT=84h](./2026052900_FT084h_ECM_SurfacePressure.png) | ![GFS FT=84h](./2026052900_FT084h_GFS_SurfacePressure.png) |
 
 #### FT=90h (6/2 3時JST)
 
