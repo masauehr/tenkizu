@@ -106,7 +106,9 @@ def parse_args():
                         choices=ALL_CHARTS, metavar='CHART',
                         help=f'描画する種別（複数指定可、デフォルト: 全て）。選択肢: {ALL_CHARTS}')
     parser.add_argument('--ecm',       action='store_true',
-                        help='ECMWFも実行する（省略時はGSMのみ。Jetは常にGSMのみ）')
+                        help='ECMWFも実行する（GSM+ECM、省略時はGSMのみ。Jetは常にGSMのみ）')
+    parser.add_argument('--ecm-only',  action='store_true',
+                        help='ECMWFのみ実行する（GSMをスキップ。JetはECM版なし→スキップ）')
     parser.add_argument('--push',      action='store_true',
                         help='GitHub へ git push する（省略時はローカル保存のみ）')
 
@@ -242,14 +244,15 @@ def main():
         ft_label = f"FT{start_ft_h}-{end_ft_h}"
     else:
         ft_label = f"FT{start_ft_h}-{end_ft_h}_{interval}h"
-    with_ecm   = args.ecm
+    run_gsm    = not args.ecm_only
+    run_ecm    = args.ecm or args.ecm_only
 
     script_dir = Path(__file__).parent.resolve()
     output_dir = script_dir / "output"
     report_dir = script_dir / "reports" / init_str
     report_dir.mkdir(parents=True, exist_ok=True)
 
-    model_label = "GSM+ECM" if with_ecm else "GSMのみ"
+    model_label = "ECMのみ" if args.ecm_only else ("GSM+ECM" if run_ecm else "GSMのみ")
     chart_label = "+".join(charts)
 
     print(f"{'='*60}")
@@ -262,7 +265,7 @@ def main():
 
     # ---- Step 0: データファイル確認 ----
     print("--- Step 0: データファイル確認 ---")
-    if not check_data_files(init_str, ft_list, True, with_ecm):
+    if not check_data_files(init_str, ft_list, run_gsm, run_ecm):
         sys.exit(1)
     print("  全ファイル確認OK\n")
 
@@ -271,51 +274,55 @@ def main():
         ft_str = f"{hours_to_ddhh(ft_h):04d}"
         print(f"=== FT={ft_h}h ===")
 
-        if "jet" in charts:
+        if "jet" in charts and run_gsm:
             print(f"  --- GSM Jet 300hPa ---")
             ok = run_python(f"GSM_Jet300hPa.py {init_str} {ft_str} 1", script_dir)
             if not ok:
                 print("  警告: GSM_Jet300hPa.py でエラーが発生しました")
 
         if "fax57" in charts:
-            print(f"  --- GSM Fax57 (500/700hPa) ---")
-            ok = run_python(f"GSM_fax57.py {init_str} {ft_str} 1", script_dir)
-            if not ok:
-                print("  警告: GSM_fax57.py でエラーが発生しました")
-            if with_ecm:
+            if run_gsm:
+                print(f"  --- GSM Fax57 (500/700hPa) ---")
+                ok = run_python(f"GSM_fax57.py {init_str} {ft_str} 1", script_dir)
+                if not ok:
+                    print("  警告: GSM_fax57.py でエラーが発生しました")
+            if run_ecm:
                 print(f"  --- ECM Fax57 (500/700hPa) ---")
                 ok = run_python(f"ECM_Fax57.py {init_str} {ft_h} 1", script_dir)
                 if not ok:
                     print("  警告: ECM_Fax57.py でエラーが発生しました")
 
         if "fax78" in charts:
-            print(f"  --- GSM Fax78 (700/850hPa) ---")
-            ok = run_python(f"GSM_fax78.py {init_str} {ft_str} 1", script_dir)
-            if not ok:
-                print("  警告: GSM_fax78.py でエラーが発生しました")
-            if with_ecm:
+            if run_gsm:
+                print(f"  --- GSM Fax78 (700/850hPa) ---")
+                ok = run_python(f"GSM_fax78.py {init_str} {ft_str} 1", script_dir)
+                if not ok:
+                    print("  警告: GSM_fax78.py でエラーが発生しました")
+            if run_ecm:
                 print(f"  --- ECM Fax78 (700/850hPa) ---")
                 ok = run_python(f"ECM_Fax78.py {init_str} {ft_h} 1", script_dir)
                 if not ok:
                     print("  警告: ECM_Fax78.py でエラーが発生しました")
 
         if "ept" in charts:
-            print(f"  --- GSM 850hPa 相当温位 ---")
-            ok = run_python(f"GSM_EPT850hPa.py {init_str} {ft_str} 1", script_dir)
-            if not ok:
-                print("  警告: GSM_EPT850hPa.py でエラーが発生しました")
-            if with_ecm:
+            if run_gsm:
+                print(f"  --- GSM 850hPa 相当温位 ---")
+                ok = run_python(f"GSM_EPT850hPa.py {init_str} {ft_str} 1", script_dir)
+                if not ok:
+                    print("  警告: GSM_EPT850hPa.py でエラーが発生しました")
+            if run_ecm:
                 print(f"  --- ECM 850hPa 相当温位 ---")
                 ok = run_python(f"ECM_EPT850hPa.py {init_str} {ft_h} 1", script_dir)
                 if not ok:
                     print("  警告: ECM_EPT850hPa.py でエラーが発生しました")
 
         if "srf" in charts:
-            print(f"  --- GSM 地上気圧 ---")
-            ok = run_python(f"GSM_faxSrfPre.py {init_str} {ft_str} 1", script_dir)
-            if not ok:
-                print("  警告: GSM_faxSrfPre.py でエラーが発生しました")
-            if with_ecm:
+            if run_gsm:
+                print(f"  --- GSM 地上気圧 ---")
+                ok = run_python(f"GSM_faxSrfPre.py {init_str} {ft_str} 1", script_dir)
+                if not ok:
+                    print("  警告: GSM_faxSrfPre.py でエラーが発生しました")
+            if run_ecm:
                 print(f"  --- ECM 地上気圧 ---")
                 ok = run_python(f"ECM_SurfacePressure.py {init_str} {ft_h} 1", script_dir)
                 if not ok:
@@ -348,44 +355,48 @@ def main():
                 collected["jet"][ft_h] = fname
 
         if "fax57" in charts:
-            src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_Fax57.png"
-            fname = copy_png(src, report_dir, f"GSM Fax57 FT={ft_h}h")
-            if fname:
-                collected["fax57"][ft_h] = fname
-            if with_ecm:
+            if run_gsm:
+                src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_Fax57.png"
+                fname = copy_png(src, report_dir, f"GSM Fax57 FT={ft_h}h")
+                if fname:
+                    collected["fax57"][ft_h] = fname
+            if run_ecm:
                 src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_ECM_Fax57.png"
                 fname = copy_png(src, report_dir, f"ECM Fax57 FT={ft_h}h")
                 if fname:
                     collected["ecm_fax57"][ft_h] = fname
 
         if "fax78" in charts:
-            src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_Fax78.png"
-            fname = copy_png(src, report_dir, f"GSM Fax78 FT={ft_h}h")
-            if fname:
-                collected["fax78"][ft_h] = fname
-            if with_ecm:
+            if run_gsm:
+                src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_Fax78.png"
+                fname = copy_png(src, report_dir, f"GSM Fax78 FT={ft_h}h")
+                if fname:
+                    collected["fax78"][ft_h] = fname
+            if run_ecm:
                 src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_ECM_Fax78.png"
                 fname = copy_png(src, report_dir, f"ECM Fax78 FT={ft_h}h")
                 if fname:
                     collected["ecm_fax78"][ft_h] = fname
 
         if "ept" in charts:
-            src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_850hPa_EPT.png"
-            fname = copy_png(src, report_dir, f"GSM EPT850 FT={ft_h}h")
-            if fname:
-                collected["ept"][ft_h] = fname
-            if with_ecm:
+            if run_gsm:
+                src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_850hPa_EPT.png"
+                fname = copy_png(src, report_dir, f"GSM EPT850 FT={ft_h}h")
+                if fname:
+                    collected["ept"][ft_h] = fname
+            if run_ecm:
                 src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_ECM_850hPa_EPT.png"
                 fname = copy_png(src, report_dir, f"ECM EPT850 FT={ft_h}h")
                 if fname:
                     collected["ecm_ept"][ft_h] = fname
 
         if "srf" in charts:
-            src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_SurfacePressure.png"
-            fname = copy_png(src, report_dir, f"GSM 地上 FT={ft_h}h")
-            if fname:
-                collected["srf"][ft_h] = fname
-            if with_ecm:
+            if run_gsm:
+                src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_SurfacePressure.png"
+                fname = copy_png(src, report_dir, f"GSM 地上 FT={ft_h}h")
+                if fname:
+                    collected["srf"][ft_h] = fname
+            if run_ecm:
                 src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_ECM_SurfacePressure.png"
                 fname = copy_png(src, report_dir, f"ECM 地上 FT={ft_h}h")
                 if fname:

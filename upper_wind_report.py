@@ -12,6 +12,7 @@
 #   python upper_wind_report.py 2026041200 0000 24h               # 24hプリセット（FT=0〜120h）
 #   python upper_wind_report.py 2026041200 0000 5 --interval 12   # 12h間隔 5枚
 #   python upper_wind_report.py 2026041200 --ecm                  # 100hPa GSM+ECM FT=0h 1枚
+#   python upper_wind_report.py 2026041200 --ecm-only             # 100hPa ECMのみ FT=0h 1枚
 #   python upper_wind_report.py 2026041200 --levels 100 50        # 100+50hPa GSMのみ FT=0h
 #   python upper_wind_report.py 2026041200 0000 12h --levels 100 50 --ecm
 #
@@ -54,6 +55,7 @@ def parse_args():
   python upper_wind_report.py 2026041200 0000 24h                 # 24hプリセット（FT=0〜120h）
   python upper_wind_report.py 2026041200 0000 5 --interval 12     # 12h間隔 5枚
   python upper_wind_report.py 2026041200 --ecm                    # 100hPa GSM+ECM FT=0h 1枚
+  python upper_wind_report.py 2026041200 --ecm-only               # 100hPa ECMのみ FT=0h 1枚
   python upper_wind_report.py 2026041200 --levels 100 50          # 100+50hPa GSMのみ FT=0h
   python upper_wind_report.py 2026041200 0000 12h --levels 100 50 --ecm
         """
@@ -68,7 +70,9 @@ def parse_args():
     parser.add_argument('--levels',   type=int, nargs='+', default=[100],
                         help='描画する気圧面 hPa（複数指定可、デフォルト: 100）')
     parser.add_argument('--ecm',      action='store_true',
-                        help='ECMWFも実行する（省略時はGSMのみ）')
+                        help='ECMWFも実行する（GSM+ECM、省略時はGSMのみ）')
+    parser.add_argument('--ecm-only', action='store_true',
+                        help='ECMWFのみ実行する（GSMをスキップ）')
     parser.add_argument('--push',     action='store_true',
                         help='GitHub へ git push する（省略時はローカル保存のみ）')
 
@@ -178,7 +182,8 @@ def main():
 
     start_ddhh = int(args.start_ft)
     levels     = args.levels
-    with_ecm   = args.ecm
+    run_gsm    = not args.ecm_only
+    run_ecm    = args.ecm or args.ecm_only
     raw_steps  = args.n_steps
     if raw_steps in PRESETS:
         interval = PRESETS[raw_steps]["interval"]
@@ -197,7 +202,7 @@ def main():
     report_dir.mkdir(parents=True, exist_ok=True)
 
     level_label = "+".join(f"{l}hPa" for l in levels)
-    model_label = "GSM+ECM" if with_ecm else "GSMのみ"
+    model_label = "ECMのみ" if args.ecm_only else ("GSM+ECM" if run_ecm else "GSMのみ")
     if n_steps == 1:
         ft_label = f"FT{start_ft_h}"
     elif interval == 6:
@@ -212,7 +217,7 @@ def main():
 
     # ---- Step 0: データファイル確認 ----
     print("--- Step 0: データファイル確認 ---")
-    if not check_data_files(init_str, ft_list, True, with_ecm):
+    if not check_data_files(init_str, ft_list, run_gsm, run_ecm):
         sys.exit(1)
     print("  全ファイル確認OK\n")
 
@@ -221,14 +226,13 @@ def main():
         ft_str = f"{hours_to_ddhh(ft_h):04d}"
         print(f"=== FT={ft_h}h ===")
         for lev in levels:
-            print(f"  --- GSM {lev}hPa ---")
-            ok = run_python(f"GSM_100hPa.py {init_str} {ft_str} 1 {lev}", script_dir)
-            if not ok:
-                print(f"  警告: GSM_100hPa.py (level={lev}) でエラーが発生しました")
+            if run_gsm:
+                print(f"  --- GSM {lev}hPa ---")
+                ok = run_python(f"GSM_100hPa.py {init_str} {ft_str} 1 {lev}", script_dir)
+                if not ok:
+                    print(f"  警告: GSM_100hPa.py (level={lev}) でエラーが発生しました")
 
-            if not with_ecm:
-                print(f"  --- ECM {lev}hPa: スキップ（--ecm 未指定）---")
-            else:
+            if run_ecm:
                 print(f"  --- ECM {lev}hPa ---")
                 ok = run_python(f"ECM_100hPa.py {init_str} {ft_h} 1 {lev}", script_dir)
                 if not ok:

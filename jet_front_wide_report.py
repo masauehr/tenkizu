@@ -15,6 +15,7 @@
 #   python jet_front_wide_report.py 2026041200 0000 24h           # 24hプリセット（FT=0〜120h）
 #   python jet_front_wide_report.py 2026041200 0000 5 --interval 12   # 12h間隔 5枚
 #   python jet_front_wide_report.py 2026041200 --ecm              # GSM+ECM FT=0h 1枚
+#   python jet_front_wide_report.py 2026041200 --ecm-only         # ECMのみ FT=0h 1枚
 #   python jet_front_wide_report.py 2026041200 --levels 100 50    # 上層風を100+50hPa
 #   python jet_front_wide_report.py 2026041200 0000 5 --ecm --levels 100 50
 #   python jet_front_wide_report.py 2026041200 0000 3 --avg_steps 4   # FT0-18h, FT24-42h, FT48-66h 平均 3枚
@@ -64,6 +65,7 @@ def parse_args():
   python jet_front_wide_report.py 2026041200 0000 24h                # 24hプリセット（FT=0〜120h）
   python jet_front_wide_report.py 2026041200 0000 5 --interval 12    # 12h間隔 5枚
   python jet_front_wide_report.py 2026041200 --ecm                   # GSM+ECM FT=0h 1枚
+  python jet_front_wide_report.py 2026041200 --ecm-only              # ECMのみ FT=0h 1枚
   python jet_front_wide_report.py 2026041200 --levels 100 50         # 上層風を100+50hPa
   python jet_front_wide_report.py 2026041200 0000 5 --ecm --levels 100 50
   python jet_front_wide_report.py 2026041200 0000 3 --avg_steps 4    # 平均モード（6h固定）
@@ -78,8 +80,10 @@ def parse_args():
                         help='FT間隔 時間数（デフォルト: 6）。プリセット指定時・avg_steps使用時は無視される')
     parser.add_argument('--levels',  type=int, nargs='+', default=[100],
                         help='上層風の気圧面 hPa（複数指定可、デフォルト: 100）')
-    parser.add_argument('--ecm',     action='store_true',
-                        help='ECMWFも実行する（省略時はGSMのみ）')
+    parser.add_argument('--ecm',      action='store_true',
+                        help='ECMWFも実行する（GSM+ECM、省略時はGSMのみ）')
+    parser.add_argument('--ecm-only', action='store_true',
+                        help='ECMWFのみ実行する（GSMをスキップ）')
     parser.add_argument('--push',      action='store_true',
                         help='GitHub へ git push する（省略時はローカル保存のみ）')
     parser.add_argument('--avg_steps', type=int, default=1,
@@ -207,7 +211,8 @@ def main():
 
     start_ddhh = int(args.start_ft)
     levels     = args.levels
-    with_ecm   = args.ecm
+    run_gsm    = not args.ecm_only
+    run_ecm    = args.ecm or args.ecm_only
     avg_steps  = args.avg_steps
 
     # avg_steps > 1 の場合はプリセット・--interval 無効（6h固定）
@@ -231,7 +236,7 @@ def main():
     report_dir.mkdir(parents=True, exist_ok=True)
 
     level_label = "+".join(f"{l}hPa" for l in levels)
-    model_label = "GSM+ECM" if with_ecm else "GSMのみ"
+    model_label = "ECMのみ" if args.ecm_only else ("GSM+ECM" if run_ecm else "GSMのみ")
     if avg_steps > 1:
         end_ft_h_avg = start_ft_h + (n_steps - 1) * 6 * avg_steps + (avg_steps - 1) * 6
         ft_label = f"FT{start_ft_h}-{end_ft_h_avg}_avg{avg_steps}"
@@ -259,7 +264,7 @@ def main():
     else:
         ft_list_check = [start_ft_h + i * interval for i in range(n_steps)]
     print("--- Step 0: データファイル確認 ---")
-    if not check_data_files(init_str, ft_list_check, True, with_ecm):
+    if not check_data_files(init_str, ft_list_check, run_gsm, run_ecm):
         sys.exit(1)
     print("  全ファイル確認OK\n")
 
@@ -267,14 +272,15 @@ def main():
     if avg_steps > 1:
         # 平均モード: n_steps をまとめて渡す（6h固定）
         for lev in levels:
-            print(f"--- GSM {lev}hPa 上層風 (ワイド) ---")
-            ok = run_python(
-                f"GSM_100hPa.py {init_str} {args.start_ft} {n_steps} {lev} {upper_area_arg} {avg_arg}",
-                script_dir
-            )
-            if not ok:
-                print(f"警告: GSM_100hPa.py (level={lev}) でエラーが発生しました")
-            if with_ecm:
+            if run_gsm:
+                print(f"--- GSM {lev}hPa 上層風 (ワイド) ---")
+                ok = run_python(
+                    f"GSM_100hPa.py {init_str} {args.start_ft} {n_steps} {lev} {upper_area_arg} {avg_arg}",
+                    script_dir
+                )
+                if not ok:
+                    print(f"警告: GSM_100hPa.py (level={lev}) でエラーが発生しました")
+            if run_ecm:
                 print(f"\n--- ECM {lev}hPa 上層風 (ワイド) ---")
                 ok = run_python(
                     f"ECM_100hPa.py {init_str} {start_ft_h} {n_steps} {lev} {upper_area_arg} {avg_arg}",
@@ -284,14 +290,15 @@ def main():
                     print(f"警告: ECM_100hPa.py (level={lev}) でエラーが発生しました")
             print()
 
-        print("--- GSM 850hPa 相当温位 (ワイド) ---")
-        ok = run_python(
-            f"GSM_EPT850hPa.py {init_str} {args.start_ft} {n_steps} {ept_area_arg} {avg_arg}",
-            script_dir
-        )
-        if not ok:
-            print("警告: GSM_EPT850hPa.py でエラーが発生しました")
-        if with_ecm:
+        if run_gsm:
+            print("--- GSM 850hPa 相当温位 (ワイド) ---")
+            ok = run_python(
+                f"GSM_EPT850hPa.py {init_str} {args.start_ft} {n_steps} {ept_area_arg} {avg_arg}",
+                script_dir
+            )
+            if not ok:
+                print("警告: GSM_EPT850hPa.py でエラーが発生しました")
+        if run_ecm:
             print("\n--- ECM 850hPa 相当温位 (ワイド) ---")
             ok = run_python(
                 f"ECM_EPT850hPa.py {init_str} {start_ft_h} {n_steps} {ept_area_arg} {avg_arg}",
@@ -307,14 +314,15 @@ def main():
             ft_str = f"{hours_to_ddhh(ft_h):04d}"
             print(f"=== FT={ft_h}h ===")
             for lev in levels:
-                print(f"  --- GSM {lev}hPa 上層風 (ワイド) ---")
-                ok = run_python(
-                    f"GSM_100hPa.py {init_str} {ft_str} 1 {lev} {upper_area_arg}",
-                    script_dir
-                )
-                if not ok:
-                    print(f"  警告: GSM_100hPa.py (level={lev}) でエラーが発生しました")
-                if with_ecm:
+                if run_gsm:
+                    print(f"  --- GSM {lev}hPa 上層風 (ワイド) ---")
+                    ok = run_python(
+                        f"GSM_100hPa.py {init_str} {ft_str} 1 {lev} {upper_area_arg}",
+                        script_dir
+                    )
+                    if not ok:
+                        print(f"  警告: GSM_100hPa.py (level={lev}) でエラーが発生しました")
+                if run_ecm:
                     print(f"  --- ECM {lev}hPa 上層風 (ワイド) ---")
                     ok = run_python(
                         f"ECM_100hPa.py {init_str} {ft_h} 1 {lev} {upper_area_arg}",
@@ -323,14 +331,15 @@ def main():
                     if not ok:
                         print(f"  警告: ECM_100hPa.py (level={lev}) でエラーが発生しました")
 
-            print(f"  --- GSM 850hPa 相当温位 (ワイド) ---")
-            ok = run_python(
-                f"GSM_EPT850hPa.py {init_str} {ft_str} 1 {ept_area_arg}",
-                script_dir
-            )
-            if not ok:
-                print("  警告: GSM_EPT850hPa.py でエラーが発生しました")
-            if with_ecm:
+            if run_gsm:
+                print(f"  --- GSM 850hPa 相当温位 (ワイド) ---")
+                ok = run_python(
+                    f"GSM_EPT850hPa.py {init_str} {ft_str} 1 {ept_area_arg}",
+                    script_dir
+                )
+                if not ok:
+                    print("  警告: GSM_EPT850hPa.py でエラーが発生しました")
+            if run_ecm:
                 print(f"  --- ECM 850hPa 相当温位 (ワイド) ---")
                 ok = run_python(
                     f"ECM_EPT850hPa.py {init_str} {ft_h} 1 {ept_area_arg}",
@@ -365,17 +374,18 @@ def main():
             avg_label = None
 
         for lev in levels:
-            if avg_label:
-                src = output_dir / f"{dt_str2}_{avg_label}_GSM_{lev}hPa_Height_Wind.png"
-                label = f"GSM {lev}hPa 上層風 {avg_label}"
-            else:
-                src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_{lev}hPa_Height_Wind.png"
-                label = f"GSM {lev}hPa 上層風 FT={ft_h}h"
-            fname = copy_png(src, report_dir, label)
-            if fname:
-                collected["upper_gsm"][lev][ft_h] = fname
+            if run_gsm:
+                if avg_label:
+                    src = output_dir / f"{dt_str2}_{avg_label}_GSM_{lev}hPa_Height_Wind.png"
+                    label = f"GSM {lev}hPa 上層風 {avg_label}"
+                else:
+                    src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_{lev}hPa_Height_Wind.png"
+                    label = f"GSM {lev}hPa 上層風 FT={ft_h}h"
+                fname = copy_png(src, report_dir, label)
+                if fname:
+                    collected["upper_gsm"][lev][ft_h] = fname
 
-            if with_ecm:
+            if run_ecm:
                 if avg_label:
                     src = output_dir / f"{dt_str2}_{avg_label}_ECM_{lev}hPa_Height_Wind.png"
                     label = f"ECM {lev}hPa 上層風 {avg_label}"
@@ -386,17 +396,18 @@ def main():
                 if fname:
                     collected["upper_ecm"][lev][ft_h] = fname
 
-        if avg_label:
-            src = output_dir / f"{dt_str2}_{avg_label}_GSM_850hPa_EPT.png"
-            label = f"GSM EPT850 {avg_label}"
-        else:
-            src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_850hPa_EPT.png"
-            label = f"GSM EPT850 FT={ft_h}h"
-        fname = copy_png(src, report_dir, label)
-        if fname:
-            collected["ept_gsm"][ft_h] = fname
+        if run_gsm:
+            if avg_label:
+                src = output_dir / f"{dt_str2}_{avg_label}_GSM_850hPa_EPT.png"
+                label = f"GSM EPT850 {avg_label}"
+            else:
+                src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_850hPa_EPT.png"
+                label = f"GSM EPT850 FT={ft_h}h"
+            fname = copy_png(src, report_dir, label)
+            if fname:
+                collected["ept_gsm"][ft_h] = fname
 
-        if with_ecm:
+        if run_ecm:
             if avg_label:
                 src = output_dir / f"{dt_str2}_{avg_label}_ECM_850hPa_EPT.png"
                 label = f"ECM EPT850 {avg_label}"
@@ -409,7 +420,9 @@ def main():
 
     any_copied = any([
         any(collected["upper_gsm"][lev] for lev in levels),
+        any(collected["upper_ecm"][lev] for lev in levels),
         collected["ept_gsm"],
+        collected["ept_ecm"],
     ])
     if not any_copied:
         print("エラー: コピーするPNGがありません。処理を中断します。")

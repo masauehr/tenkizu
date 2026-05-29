@@ -13,6 +13,7 @@
 #   python jet_front_report.py 2026041200 0000 24h           # 24hプリセット（FT=0〜120h）
 #   python jet_front_report.py 2026041200 0000 5 --interval 12   # 12h間隔 5枚
 #   python jet_front_report.py 2026041200 --ecm              # GSM+ECM FT=0h 1枚
+#   python jet_front_report.py 2026041200 --ecm-only         # ECMのみ FT=0h 1枚（断面図はスキップ）
 #   python jet_front_report.py 2026041200 --levels 100 50    # 上層風を100+50hPa
 #   python jet_front_report.py 2026041200 --lat-s 45 --lat-e 25 --lon-s 125 --lon-e 135
 #
@@ -55,6 +56,7 @@ def parse_args():
   python jet_front_report.py 2026041200 0000 24h                 # 24hプリセット（FT=0〜120h）
   python jet_front_report.py 2026041200 0000 5 --interval 12     # 12h間隔 5枚
   python jet_front_report.py 2026041200 --ecm                    # GSM+ECM FT=0h 1枚
+  python jet_front_report.py 2026041200 --ecm-only               # ECMのみ FT=0h 1枚（断面図はスキップ）
   python jet_front_report.py 2026041200 --levels 100 50          # 上層風を100+50hPa
   python jet_front_report.py 2026041200 0000 12h --ecm --levels 100 50
   python jet_front_report.py 2026041200 --lat-s 45 --lat-e 25 --lon-s 125 --lon-e 135
@@ -69,8 +71,10 @@ def parse_args():
                         help='FT間隔 時間数（デフォルト: 6）。プリセット指定時は無視される')
     parser.add_argument('--levels',  type=int, nargs='+', default=[100],
                         help='上層風の気圧面 hPa（複数指定可、デフォルト: 100）')
-    parser.add_argument('--ecm',     action='store_true',
-                        help='ECMWFも実行する（省略時はGSMのみ）')
+    parser.add_argument('--ecm',      action='store_true',
+                        help='ECMWFも実行する（GSM+ECM、省略時はGSMのみ）')
+    parser.add_argument('--ecm-only', action='store_true',
+                        help='ECMWFのみ実行する（GSMをスキップ、断面図もスキップ）')
     parser.add_argument('--push',    action='store_true',
                         help='GitHub へ git push する（省略時はローカル保存のみ）')
     # 鉛直断面の端点（GSM_CrossSection.py のデフォルトと合わせる）
@@ -200,7 +204,8 @@ def main():
 
     start_ddhh = int(args.start_ft)
     levels     = args.levels
-    with_ecm   = args.ecm
+    run_gsm    = not args.ecm_only
+    run_ecm    = args.ecm or args.ecm_only
     raw_steps  = args.n_steps
     if raw_steps in PRESETS:
         interval = PRESETS[raw_steps]["interval"]
@@ -219,7 +224,7 @@ def main():
     report_dir.mkdir(parents=True, exist_ok=True)
 
     level_label = "+".join(f"{l}hPa" for l in levels)
-    model_label = "GSM+ECM" if with_ecm else "GSMのみ"
+    model_label = "ECMのみ" if args.ecm_only else ("GSM+ECM" if run_ecm else "GSMのみ")
     if n_steps == 1:
         ft_label = f"FT{start_ft_h}"
     elif interval == 6:
@@ -244,7 +249,7 @@ def main():
 
     # ---- Step 0: データファイル確認 ----
     print("--- Step 0: データファイル確認 ---")
-    if not check_data_files(init_str, ft_list, True, with_ecm):
+    if not check_data_files(init_str, ft_list, run_gsm, run_ecm):
         sys.exit(1)
     print("  全ファイル確認OK\n")
 
@@ -255,39 +260,43 @@ def main():
 
         # 上層風
         for lev in levels:
-            print(f"  --- GSM {lev}hPa 上層風 ---")
-            ok = run_python(f"GSM_100hPa.py {init_str} {ft_str} 1 {lev}", script_dir)
-            if not ok:
-                print(f"  警告: GSM_100hPa.py (level={lev}) でエラーが発生しました")
-            if with_ecm:
+            if run_gsm:
+                print(f"  --- GSM {lev}hPa 上層風 ---")
+                ok = run_python(f"GSM_100hPa.py {init_str} {ft_str} 1 {lev}", script_dir)
+                if not ok:
+                    print(f"  警告: GSM_100hPa.py (level={lev}) でエラーが発生しました")
+            if run_ecm:
                 print(f"  --- ECM {lev}hPa 上層風 ---")
                 ok = run_python(f"ECM_100hPa.py {init_str} {ft_h} 1 {lev}", script_dir)
                 if not ok:
                     print(f"  警告: ECM_100hPa.py (level={lev}) でエラーが発生しました")
 
-        # 鉛直断面図
-        print(f"  --- GSM 鉛直断面図 ---")
-        ok = run_python(f"GSM_CrossSection.py {init_str} {ft_str} 1 {cs_args}", script_dir)
-        if not ok:
-            print("  警告: GSM_CrossSection.py でエラーが発生しました")
+        # 鉛直断面図（GSMのみ）
+        if run_gsm:
+            print(f"  --- GSM 鉛直断面図 ---")
+            ok = run_python(f"GSM_CrossSection.py {init_str} {ft_str} 1 {cs_args}", script_dir)
+            if not ok:
+                print("  警告: GSM_CrossSection.py でエラーが発生しました")
 
         # 850hPa 相当温位
-        print(f"  --- GSM 850hPa 相当温位 ---")
-        ok = run_python(f"GSM_EPT850hPa.py {init_str} {ft_str} 1", script_dir)
-        if not ok:
-            print("  警告: GSM_EPT850hPa.py でエラーが発生しました")
-        if with_ecm:
+        if run_gsm:
+            print(f"  --- GSM 850hPa 相当温位 ---")
+            ok = run_python(f"GSM_EPT850hPa.py {init_str} {ft_str} 1", script_dir)
+            if not ok:
+                print("  警告: GSM_EPT850hPa.py でエラーが発生しました")
+        if run_ecm:
             print(f"  --- ECM 850hPa 相当温位 ---")
             ok = run_python(f"ECM_EPT850hPa.py {init_str} {ft_h} 1", script_dir)
             if not ok:
                 print("  警告: ECM_EPT850hPa.py でエラーが発生しました")
 
         # 地上気圧
-        print(f"  --- GSM 地上気圧 ---")
-        ok = run_python(f"GSM_faxSrfPre.py {init_str} {ft_str} 1", script_dir)
-        if not ok:
-            print("  警告: GSM_faxSrfPre.py でエラーが発生しました")
-        if with_ecm:
+        if run_gsm:
+            print(f"  --- GSM 地上気圧 ---")
+            ok = run_python(f"GSM_faxSrfPre.py {init_str} {ft_str} 1", script_dir)
+            if not ok:
+                print("  警告: GSM_faxSrfPre.py でエラーが発生しました")
+        if run_ecm:
             print(f"  --- ECM 地上気圧 ---")
             ok = run_python(f"ECM_SurfacePressure.py {init_str} {ft_h} 1", script_dir)
             if not ok:
@@ -312,42 +321,46 @@ def main():
     for ft_h in ft_list:
         # 上層風
         for lev in levels:
-            src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_{lev}hPa_Height_Wind.png"
-            fname = copy_png(src, report_dir, f"GSM {lev}hPa 上層風 FT={ft_h}h")
-            if fname:
-                collected["upper_gsm"][lev][ft_h] = fname
+            if run_gsm:
+                src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_{lev}hPa_Height_Wind.png"
+                fname = copy_png(src, report_dir, f"GSM {lev}hPa 上層風 FT={ft_h}h")
+                if fname:
+                    collected["upper_gsm"][lev][ft_h] = fname
 
-            if with_ecm:
+            if run_ecm:
                 src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_ECM_{lev}hPa_Height_Wind.png"
                 fname = copy_png(src, report_dir, f"ECM {lev}hPa 上層風 FT={ft_h}h")
                 if fname:
                     collected["upper_ecm"][lev][ft_h] = fname
 
-        # 鉛直断面
-        src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_CrossSection.png"
-        fname = copy_png(src, report_dir, f"断面図 FT={ft_h}h")
-        if fname:
-            collected["cross"][ft_h] = fname
+        # 鉛直断面（GSMのみ）
+        if run_gsm:
+            src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_CrossSection.png"
+            fname = copy_png(src, report_dir, f"断面図 FT={ft_h}h")
+            if fname:
+                collected["cross"][ft_h] = fname
 
         # 850hPa EPT
-        src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_850hPa_EPT.png"
-        fname = copy_png(src, report_dir, f"GSM EPT850 FT={ft_h}h")
-        if fname:
-            collected["ept_gsm"][ft_h] = fname
+        if run_gsm:
+            src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_850hPa_EPT.png"
+            fname = copy_png(src, report_dir, f"GSM EPT850 FT={ft_h}h")
+            if fname:
+                collected["ept_gsm"][ft_h] = fname
 
-        if with_ecm:
+        if run_ecm:
             src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_ECM_850hPa_EPT.png"
             fname = copy_png(src, report_dir, f"ECM EPT850 FT={ft_h}h")
             if fname:
                 collected["ept_ecm"][ft_h] = fname
 
         # 地上気圧
-        src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_SurfacePressure.png"
-        fname = copy_png(src, report_dir, f"GSM 地上 FT={ft_h}h")
-        if fname:
-            collected["srf_gsm"][ft_h] = fname
+        if run_gsm:
+            src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_GSM_SurfacePressure.png"
+            fname = copy_png(src, report_dir, f"GSM 地上 FT={ft_h}h")
+            if fname:
+                collected["srf_gsm"][ft_h] = fname
 
-        if with_ecm:
+        if run_ecm:
             src = output_dir / f"{dt_str2}_FT{ft_h:03d}h_ECM_SurfacePressure.png"
             fname = copy_png(src, report_dir, f"ECM 地上 FT={ft_h}h")
             if fname:
@@ -355,9 +368,12 @@ def main():
 
     any_copied = any([
         any(collected["upper_gsm"][lev] for lev in levels),
+        any(collected["upper_ecm"][lev] for lev in levels),
         collected["cross"],
         collected["ept_gsm"],
+        collected["ept_ecm"],
         collected["srf_gsm"],
+        collected["srf_ecm"],
     ])
     if not any_copied:
         print("エラー: コピーするPNGがありません。処理を中断します。")

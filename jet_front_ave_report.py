@@ -6,11 +6,12 @@
 # 例: init_time=2026050600, n_days=3 → 2026050600/0512/0500/0412/0400/0312（6個）のFT=0hを平均
 #
 # 使用例:
-#   python jet_front_ave_report.py 2026050600           # GSMのみ 1日(2個)平均
-#   python jet_front_ave_report.py 2026050600 3         # GSMのみ 3日(6個)平均
-#   python jet_front_ave_report.py 2026050600 3 --ecm   # GSM+ECM 3日平均
+#   python jet_front_ave_report.py 2026050600              # GSMのみ 1日(2個)平均
+#   python jet_front_ave_report.py 2026050600 3            # GSMのみ 3日(6個)平均
+#   python jet_front_ave_report.py 2026050600 3 --ecm      # GSM+ECM 3日平均
+#   python jet_front_ave_report.py 2026050600 3 --ecm-only # ECMのみ 3日平均
 #   python jet_front_ave_report.py 2026050600 3 --levels 100 50 --ecm
-#   python jet_front_ave_report.py 2026050600 3 --push  # 生成後 GitHub push
+#   python jet_front_ave_report.py 2026050600 3 --push     # 生成後 GitHub push
 #
 # 作成: 20260507 上原政博（jet_front_wide_report.py をベースに作成）
 
@@ -128,9 +129,10 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 使用例:
-  python jet_front_ave_report.py 2026050600           # GSMのみ 1日(2個)平均
-  python jet_front_ave_report.py 2026050600 3         # GSMのみ 3日(6個)平均
-  python jet_front_ave_report.py 2026050600 3 --ecm   # GSM+ECM 3日平均
+  python jet_front_ave_report.py 2026050600                # GSMのみ 1日(2個)平均
+  python jet_front_ave_report.py 2026050600 3              # GSMのみ 3日(6個)平均
+  python jet_front_ave_report.py 2026050600 3 --ecm        # GSM+ECM 3日平均
+  python jet_front_ave_report.py 2026050600 3 --ecm-only   # ECMのみ 3日平均
   python jet_front_ave_report.py 2026050600 3 --levels 100 50
   python jet_front_ave_report.py 2026050600 3 --push
         """
@@ -141,8 +143,10 @@ def parse_args():
                         help='平均日数（12h間隔で2個 = 1日、デフォルト: 1）')
     parser.add_argument('--levels',  type=int, nargs='+', default=[100],
                         help='上層風の気圧面 hPa（複数指定可、デフォルト: 100）')
-    parser.add_argument('--ecm',     action='store_true',
-                        help='ECMWFも実行する（省略時はGSMのみ）')
+    parser.add_argument('--ecm',      action='store_true',
+                        help='ECMWFも実行する（GSM+ECM、省略時はGSMのみ）')
+    parser.add_argument('--ecm-only', action='store_true',
+                        help='ECMWFのみ実行する（GSMをスキップ）')
     parser.add_argument('--push',    action='store_true',
                         help='GitHub へ git push する（省略時はローカル保存のみ）')
 
@@ -731,9 +735,10 @@ def main():
         print("エラー: n_days は 1 以上を指定してください")
         sys.exit(1)
 
-    n_days   = args.n_days
-    levels   = args.levels
-    with_ecm = args.ecm
+    n_days    = args.n_days
+    levels    = args.levels
+    run_gsm   = not args.ecm_only
+    run_ecm   = args.ecm or args.ecm_only
 
     newest_dt      = datetime.strptime(init_str, "%Y%m%d%H")
     init_times     = build_init_times(newest_dt, n_days)
@@ -748,7 +753,7 @@ def main():
 
     period_str  = f"{oldest_dt.strftime('%Y%m%d%H')}〜{newest_dt.strftime('%Y%m%d%H')}UTC"
     level_label = "+".join(f"{l}hPa" for l in levels)
-    model_label = "GSM+ECM" if with_ecm else "GSMのみ"
+    model_label = "ECMのみ" if args.ecm_only else ("GSM+ECM" if run_ecm else "GSMのみ")
 
     print(f"{'='*60}")
     print(f" ジェット・前線解析（広域・時間平均） [{model_label}] 上層風:{level_label}")
@@ -763,7 +768,7 @@ def main():
 
     # ---- Step 0: データファイル確認 ----
     print("--- Step 0: データファイル確認 ---")
-    if not check_data_files(init_times, True, with_ecm):
+    if not check_data_files(init_times, run_gsm, run_ecm):
         sys.exit(1)
     print("  全ファイル確認OK\n")
 
@@ -776,16 +781,17 @@ def main():
 
     # ---- 上層風 ----
     for lev in levels:
-        print(f"--- GSM {lev}hPa 上層風 (時間平均) ---")
-        ok = plot_gsm_100hpa_avg(init_times, lev, output_dir, AREA_UPPER, newest_dt_str2, n_days)
-        if ok:
-            src = Path(output_dir) / f"{newest_dt_str2}_AVG{n_days}d_GSM_{lev}hPa_Height_Wind.png"
-            collected["upper_gsm"][lev] = copy_png(src, report_dir, f"GSM {lev}hPa 上層風")
-        else:
-            print(f"警告: GSM {lev}hPa 上層風 の生成に失敗しました")
-        print()
+        if run_gsm:
+            print(f"--- GSM {lev}hPa 上層風 (時間平均) ---")
+            ok = plot_gsm_100hpa_avg(init_times, lev, output_dir, AREA_UPPER, newest_dt_str2, n_days)
+            if ok:
+                src = Path(output_dir) / f"{newest_dt_str2}_AVG{n_days}d_GSM_{lev}hPa_Height_Wind.png"
+                collected["upper_gsm"][lev] = copy_png(src, report_dir, f"GSM {lev}hPa 上層風")
+            else:
+                print(f"警告: GSM {lev}hPa 上層風 の生成に失敗しました")
+            print()
 
-        if with_ecm:
+        if run_ecm:
             print(f"--- ECM {lev}hPa 上層風 (時間平均) ---")
             ok = plot_ecm_100hpa_avg(init_times, lev, output_dir, AREA_UPPER, newest_dt_str2, n_days)
             if ok:
@@ -796,16 +802,17 @@ def main():
             print()
 
     # ---- 850hPa EPT ----
-    print("--- GSM 850hPa 相当温位 (時間平均) ---")
-    ok = plot_gsm_ept850_avg(init_times, output_dir, AREA_EPT, newest_dt_str2, n_days)
-    if ok:
-        src = Path(output_dir) / f"{newest_dt_str2}_AVG{n_days}d_GSM_850hPa_EPT.png"
-        collected["ept_gsm"] = copy_png(src, report_dir, "GSM EPT850")
-    else:
-        print("警告: GSM 850hPa EPT の生成に失敗しました")
-    print()
+    if run_gsm:
+        print("--- GSM 850hPa 相当温位 (時間平均) ---")
+        ok = plot_gsm_ept850_avg(init_times, output_dir, AREA_EPT, newest_dt_str2, n_days)
+        if ok:
+            src = Path(output_dir) / f"{newest_dt_str2}_AVG{n_days}d_GSM_850hPa_EPT.png"
+            collected["ept_gsm"] = copy_png(src, report_dir, "GSM EPT850")
+        else:
+            print("警告: GSM 850hPa EPT の生成に失敗しました")
+        print()
 
-    if with_ecm:
+    if run_ecm:
         print("--- ECM 850hPa 相当温位 (時間平均) ---")
         ok = plot_ecm_ept850_avg(init_times, output_dir, AREA_EPT, newest_dt_str2, n_days)
         if ok:
@@ -817,7 +824,9 @@ def main():
 
     any_copied = any([
         any(v for v in collected["upper_gsm"].values()),
+        any(v for v in collected["upper_ecm"].values()),
         collected["ept_gsm"],
+        collected["ept_ecm"],
     ])
     if not any_copied:
         print("エラー: コピーするPNGがありません。処理を中断します。")
