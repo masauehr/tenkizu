@@ -320,6 +320,22 @@ python synop_report.py 2026041200 0000 5 --ecm --push
 
 ---
 
+### GitHub push の補足
+
+`--push` オプションは内部で `git add → git commit → git push` を実行する。ファイル内容が前回と同一の場合は差分なしと判定され push をスキップする。
+
+**画像を強制上書き push したい場合**（`--area` 変更などで再生成した場合は内容が変わるため通常は自動で push される）：
+
+```bash
+git add reports/2026060212/
+git commit --allow-empty -m "force update: 2026060212"
+git push
+```
+
+`--allow-empty` を付けると差分がなくてもコミットを作れる。
+
+---
+
 ### 一括生成（全16スクリプト）
 
 ```bash
