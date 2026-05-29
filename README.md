@@ -397,7 +397,7 @@ python GFS_SurfacePressure.py INIT_TIME [start_ft] [n_steps] [--interval N]
 ```bash
 python GFS_SurfacePressure.py 2026060212 0 1                        # FT=0h 1枚
 python GFS_SurfacePressure.py 2026060212 0 5                        # FT=0,6,12,18,24h 5枚
-python GFS_SurfacePressure.py 2026060212 0 1 --area 120 150 15 35   # 沖縄周辺
+python GFS_SurfacePressure.py 2026060212 0 1 --area 120 140 15 35   # 沖縄周辺
 ```
 
 ---
@@ -415,7 +415,7 @@ python typhoon-multi.py INIT_TIME [start_ft] [n_steps] [--interval N]
 | `--area` 指定例 | 範囲 |
 |----------------|------|
 | `108 156 5 45` | 東アジア（デフォルト） |
-| `120 150 15 35` | 沖縄周辺 |
+| `120 140 15 35` | 沖縄周辺 |
 | `120 150 15 40` | 日本近海 |
 | `100 170 0 50` | 広域西太平洋 |
 | `90 180 -10 50` | 南シナ海〜北西太平洋 |
@@ -426,7 +426,7 @@ python typhoon-multi.py 2026060212 0000 12h                 # 12hプリセット
 python typhoon-multi.py 2026060212 --gsm                    # GSMのみ
 python typhoon-multi.py 2026060212 --ecm                    # ECMWFのみ
 python typhoon-multi.py 2026060212 --gfs                    # GFSのみ
-python typhoon-multi.py 2026060212 --area 120 150 15 35     # 沖縄周辺
+python typhoon-multi.py 2026060212 --area 120 140 15 35     # 沖縄周辺
 python typhoon-multi.py 2026060212 --area 100 170 0 50      # 広域西太平洋
 python typhoon-multi.py 2026060212 0000 3 --push            # pushあり
 ```
