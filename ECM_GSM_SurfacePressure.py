@@ -1,19 +1,20 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# GSM + ECMWF 地上気圧天気図 比較レポートスクリプト
-# 既存の GSM_faxSrfPre.py / ECM_SurfacePressure.py を実行し、
+# GSM / ECMWF / GFS 地上気圧天気図 比較レポートスクリプト
+# 既存の GSM_faxSrfPre.py / ECM_SurfacePressure.py / GFS_SurfacePressure.py を実行し、
 # 生成された PNG を reports/{init_str}/ にコピーして
-# FTごとに GSM/ECM を横並びテーブルで表示する Markdown を生成する。
+# FTごとに横並びテーブルで表示する Markdown を生成する。
 # --push で git push まで行う。
 #
 # 使用例:
-#   python ECM_GSM_SurfacePressure.py 2026052712                          # FT=0h（GSM+ECM）
+#   python ECM_GSM_SurfacePressure.py 2026052712                          # FT=0h（GSM+ECM+GFS）
 #   python ECM_GSM_SurfacePressure.py 2026052712 0000 3                   # FT=0,6,12h 3枚
 #   python ECM_GSM_SurfacePressure.py 2026052712 0000 3 --interval 12     # 12h間隔 3枚
 #   python ECM_GSM_SurfacePressure.py 2026052712 0000 12h                 # 12hプリセット
 #   python ECM_GSM_SurfacePressure.py 2026052712 --gsm                    # GSMのみ FT=0h
 #   python ECM_GSM_SurfacePressure.py 2026052712 --ecm                    # ECMWFのみ FT=0h
+#   python ECM_GSM_SurfacePressure.py 2026052712 --gfs                    # GFSのみ FT=0h
 #   python ECM_GSM_SurfacePressure.py 2026052712 0000 3 --push            # pushあり
 
 import sys
@@ -43,22 +44,23 @@ def parse_args():
         f"{k}（{v['interval']}h間隔×{v['n_steps']}枚）" for k, v in PRESETS.items()
     )
     parser = argparse.ArgumentParser(
-        description="GSM+ECMWF 地上気圧天気図を FT ごとに横並び比較する Markdown を生成する",
+        description="GSM/ECMWF/GFS 地上気圧天気図を FT ごとに横並び比較する Markdown を生成する",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 使用例:
-  python ECM_GSM_SurfacePressure.py 2026052712                          # FT=0h（GSM+ECM）
+  python ECM_GSM_SurfacePressure.py 2026052712                          # FT=0h（GSM+ECM+GFS）
   python ECM_GSM_SurfacePressure.py 2026052712 0000 3                   # FT=0,6,12h 3枚
   python ECM_GSM_SurfacePressure.py 2026052712 0000 3 --interval 12     # 12h間隔 3枚
   python ECM_GSM_SurfacePressure.py 2026052712 0000 12h                 # 12hプリセット
   python ECM_GSM_SurfacePressure.py 2026052712 --gsm                    # GSMのみ FT=0h
   python ECM_GSM_SurfacePressure.py 2026052712 --ecm                    # ECMWFのみ FT=0h
+  python ECM_GSM_SurfacePressure.py 2026052712 --gfs                    # GFSのみ FT=0h
   python ECM_GSM_SurfacePressure.py 2026052712 0000 3 --push            # pushあり
 
-ECM描画設定（固定値）:
-  --area        108 156 5 45   東経108〜156°、北緯5〜45°
-  --smooth-size 10             10×10格子平均スムージング（ECM 0.25°→約2.5°相当）
-  --wind-step   10             風矢羽を10格子おき（約2.5度間隔）
+描画設定（固定値）:
+  --area        108 156 5 45   東経108〜156°、北緯5〜45°（全モデル共通）
+  ECM: --smooth-size 10 --wind-step 10
+  GFS: --smooth-size 5  --wind-step 10
         """
     )
     parser.add_argument("init_time", type=str,
@@ -71,13 +73,14 @@ ECM描画設定（固定値）:
                         help="FT間隔 時間数（デフォルト: 6）。プリセット指定時は無視される")
     mode_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument("--gsm", action="store_true",
-                            help="GSMのみ実行（デフォルトは両モデル）")
+                            help="GSMのみ実行（デフォルトは全モデル）")
     mode_group.add_argument("--ecm", action="store_true",
-                            help="ECMWFのみ実行（デフォルトは両モデル）")
+                            help="ECMWFのみ実行（デフォルトは全モデル）")
+    mode_group.add_argument("--gfs", action="store_true",
+                            help="GFSのみ実行（デフォルトは全モデル）")
     parser.add_argument("--push", action="store_true",
                         help="GitHub へ git push する（省略時はローカル保存のみ）")
 
-    # ? / -? / --? でヘルプ表示
     if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
         parser.print_help()
         sys.exit(0)
@@ -107,19 +110,21 @@ def run_git(cmd, cwd):
     return result.returncode
 
 
-GSM_BASE_URL = "http://database.rish.kyoto-u.ac.jp/arch/jmadata/data/gpv/original"
-ECM_BASE_URL = "https://data.ecmwf.int/forecasts"
-HTTP_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; DataChecker/1.0)"}
+GSM_BASE_URL     = "http://database.rish.kyoto-u.ac.jp/arch/jmadata/data/gpv/original"
+ECM_BASE_URL     = "https://data.ecmwf.int/forecasts"
+GFS_NOMADS_PUB   = "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod"
+HTTP_HEADERS     = {"User-Agent": "Mozilla/5.0 (compatible; DataChecker/1.0)"}
 
 
-def check_data_files(init_str, ft_list_h, run_gsm, run_ecm):
-    """ローカルファイルを優先確認し、なければサーバーHEADリクエストで存在確認する。"""
+def check_data_files(init_str, ft_list_h, run_gsm, run_ecm, run_gfs):
+    """ローカルファイルを優先確認し、なければサーバー HEAD リクエストで存在確認する。"""
     script_dir = Path(__file__).parent.resolve()
     i_year  = int(init_str[0:4])
     i_month = int(init_str[4:6])
     i_day   = int(init_str[6:8])
     i_hourZ = int(init_str[8:10])
     ecm_sub = "oper" if i_hourZ in (0, 12) else "scda"
+    date_str = f"{i_year:04d}{i_month:02d}{i_day:02d}"
 
     missing = []
     for ft_h in ft_list_h:
@@ -161,6 +166,24 @@ def check_data_files(init_str, ft_list_h, run_gsm, run_ecm):
                     print(f"  ECM FT={ft_h:3d}h: NG (接続エラー: {e})")
                     missing.append(f"    {url}")
 
+        if run_gfs:
+            gfs_fn    = f"gfs.t{i_hourZ:02d}z.pgrb2.0p25.f{ft_h:03d}"
+            local     = script_dir / "data" / "gfs" / f"gfs_{init_str}_f{ft_h:03d}_srf.grib2"
+            if local.exists() and local.stat().st_size > 10_000:
+                print(f"  GFS FT={ft_h:3d}h: OK (ローカル)")
+            else:
+                url = f"{GFS_NOMADS_PUB}/gfs.{date_str}/{i_hourZ:02d}/atmos/{gfs_fn}"
+                try:
+                    r = requests.head(url, headers=HTTP_HEADERS, timeout=15)
+                    if r.status_code == 200:
+                        print(f"  GFS FT={ft_h:3d}h: OK (サーバー)")
+                    else:
+                        print(f"  GFS FT={ft_h:3d}h: NG (HTTP {r.status_code})")
+                        missing.append(f"    {url}")
+                except requests.RequestException as e:
+                    print(f"  GFS FT={ft_h:3d}h: NG (接続エラー: {e})")
+                    missing.append(f"    {url}")
+
     if missing:
         print("\nエラー: 以下のファイルがサーバーに存在しません。処理を中止します。")
         for m in missing:
@@ -187,20 +210,22 @@ def main():
         print("エラー: init_time は YYYYMMDDHH の10桁で指定してください")
         sys.exit(1)
 
-    run_gsm = not args.ecm
-    run_ecm = not args.gsm
+    # モデル選択: 単独指定があればそのモデルのみ、なければ全モデル
+    run_gsm = args.gsm or (not args.ecm and not args.gfs)
+    run_ecm = args.ecm or (not args.gsm and not args.gfs)
+    run_gfs = args.gfs or (not args.gsm and not args.ecm)
 
-    start_ddhh = int(args.start_ft)
+    start_ddhh  = int(args.start_ft)
     start_hours = ddhh_to_hours(start_ddhh)
 
     if args.n_steps in PRESETS:
-        n_steps = PRESETS[args.n_steps]["n_steps"]
+        n_steps  = PRESETS[args.n_steps]["n_steps"]
         interval = PRESETS[args.n_steps]["interval"]
     else:
-        n_steps = int(args.n_steps)
+        n_steps  = int(args.n_steps)
         interval = args.interval
 
-    ft_end = start_hours + (n_steps - 1) * interval
+    ft_end    = start_hours + (n_steps - 1) * interval
     ft_list_h = [start_hours + i * interval for i in range(n_steps)]
 
     if n_steps == 1:
@@ -215,7 +240,12 @@ def main():
     report_dir = script_dir / "reports" / init_str
     report_dir.mkdir(parents=True, exist_ok=True)
 
-    model_label = "GSMのみ" if args.gsm else ("ECMWFのみ" if args.ecm else "GSM+ECM")
+    active = []
+    if run_gsm: active.append("GSM")
+    if run_ecm: active.append("ECM")
+    if run_gfs: active.append("GFS")
+    model_label = "+".join(active)
+
     print("=" * 60)
     print(f" 地上気圧比較レポート [{model_label}]")
     print(f" 初期時刻: {init_str}  FT: {start_hours}〜{ft_end}h  {n_steps}枚  {interval}h間隔")
@@ -223,7 +253,7 @@ def main():
 
     # ---- Step 0: データファイル存在確認 ----
     print("\n--- Step 0: データファイル確認 ---")
-    if not check_data_files(init_str, ft_list_h, run_gsm, run_ecm):
+    if not check_data_files(init_str, ft_list_h, run_gsm, run_ecm, run_gfs):
         sys.exit(1)
     print("  全ファイル確認OK")
 
@@ -243,11 +273,18 @@ def main():
                             str(script_dir))
             if not ok:
                 print(f"  警告: ECM_SurfacePressure.py FT={ft_h}h でエラーが発生しました")
+        if run_gfs:
+            ok = run_python("GFS_SurfacePressure.py",
+                            f"{init_str} {ft_h} 1 --area 108 156 5 45 --smooth-size 5 --wind-step 10",
+                            str(script_dir))
+            if not ok:
+                print(f"  警告: GFS_SurfacePressure.py FT={ft_h}h でエラーが発生しました")
 
     # ---- Step 2: PNG を reports/ にコピー ----
     print(f"\n--- Step 2: PNG を reports/{init_str}/ にコピー ---")
     collected_gsm = {}
     collected_ecm = {}
+    collected_gfs = {}
 
     for ft_h in ft_list_h:
         if run_gsm:
@@ -260,8 +297,13 @@ def main():
             fname = copy_png(src, report_dir, f"ECM FT={ft_h}h")
             if fname:
                 collected_ecm[ft_h] = fname
+        if run_gfs:
+            src = output_dir / f"{init_str}_FT{ft_h:03d}h_GFS_SurfacePressure.png"
+            fname = copy_png(src, report_dir, f"GFS FT={ft_h}h")
+            if fname:
+                collected_gfs[ft_h] = fname
 
-    if not collected_gsm and not collected_ecm:
+    if not collected_gsm and not collected_ecm and not collected_gfs:
         print("エラー: コピーするPNGがありません。処理を中断します。")
         sys.exit(1)
 
@@ -270,11 +312,11 @@ def main():
         int(init_str[0:4]), int(init_str[4:6]),
         int(init_str[6:8]), int(init_str[8:10])
     )
-    dt_init = datetime(i_year, i_month, i_day, i_hourZ)
+    dt_init    = datetime(i_year, i_month, i_day, i_hourZ)
     dt_display = dt_init.strftime("%Y/%m/%d %HUTC")
 
     lines = [
-        "# 地上気圧 GSM/ECMWF 比較レポート",
+        "# 地上気圧 GSM/ECMWF/GFS 比較レポート",
         "",
         f"**初期時刻**: {dt_display}",
         "",
@@ -284,23 +326,31 @@ def main():
         "",
     ]
 
-    for ft_h in sorted(set(collected_gsm) | set(collected_ecm)):
+    all_fts = sorted(set(collected_gsm) | set(collected_ecm) | set(collected_gfs))
+    for ft_h in all_fts:
         g = collected_gsm.get(ft_h)
         e = collected_ecm.get(ft_h)
+        f = collected_gfs.get(ft_h)
         valid_jst = dt_init + timedelta(hours=ft_h + 9)
         jst_label = f"{valid_jst.month}/{valid_jst.day} {valid_jst.hour}時JST"
         lines += [f"#### FT={ft_h}h ({jst_label})", ""]
-        if g and e:
+
+        # 実際に揃っている画像のみ列として出す
+        headers = []
+        imgs    = []
+        if g: headers.append("GSM");   imgs.append(f"![GSM FT={ft_h}h](./{g})")
+        if e: headers.append("ECMWF"); imgs.append(f"![ECMWF FT={ft_h}h](./{e})")
+        if f: headers.append("GFS");   imgs.append(f"![GFS FT={ft_h}h](./{f})")
+
+        if len(headers) > 1:
             lines += [
-                "| GSM | ECMWF |",
-                "|:---:|:---:|",
-                f"| ![GSM FT={ft_h}h](./{g}) | ![ECMWF FT={ft_h}h](./{e}) |",
+                "| " + " | ".join(headers) + " |",
+                "|" + "|".join([":---:"] * len(headers)) + "|",
+                "| " + " | ".join(imgs) + " |",
                 "",
             ]
-        elif g:
-            lines += [f"![GSM FT={ft_h}h](./{g})", ""]
-        else:
-            lines += [f"![ECMWF FT={ft_h}h](./{e})", ""]
+        elif len(headers) == 1:
+            lines += [imgs[0], ""]
 
     md_name = f"srf_comparison_{ft_label}.md"
     md_path = report_dir / md_name
