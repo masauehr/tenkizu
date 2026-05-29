@@ -200,7 +200,19 @@ export JRA55_PASSWORD=your_password
 | GSM GRIB2 | `http://database.rish.kyoto-u.ac.jp/arch/jmadata/data/gpv/original/` | RISH・全期間無償 |
 | JRA-55 NetCDF | `https://database.rish.kyoto-u.ac.jp/arch/jra55/data/isobaric_1.25d` | RISH・認証必要 |
 | ECMWF Open Data | `https://data.ecmwf.int/forecasts` | 最新5日分のみ無償 |
+| GFS（NOMADS filter） | `https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25.pl` | 最新約10日分無償 |
 | Wyoming ゾンデ | `https://weather.uwyo.edu/upperair/sounding.html` | `emagram.py` 使用 |
+
+### 各国全球モデル 取得可否まとめ
+
+| モデル | 無償GRIB2 | リアルタイム | 実装 | 備考 |
+|--------|:---------:|:-----------:|:----:|------|
+| GSM（気象庁） | ✓ | ✓ | ✓ | RISH・全期間 |
+| ECMWF（欧州） | ✓ | ✓ | ✓ | Open Data・最新5日分 |
+| GFS（米国） | ✓ | ✓ | ✓ | NOMADS・最新10日分 |
+| JRA-55（再解析） | ✓（認証） | ✗ | ✓ | RISH・1958年〜 |
+| UKMET（英国） | ✗ | — | ✗ | 商用のみ |
+| GEM（カナダ） | ✓ | ✓ | ✗ | MSC Datamart |
 
 ---
 
