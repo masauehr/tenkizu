@@ -121,6 +121,16 @@ python <スクリプト名> INIT_TIME [START_FT [N_STEPS]] [オプション]
 | `12h` | 0, 12, 24, 36, 48h | 5枚 |
 | `24h` | 0, 24, 48, 72, 96, 120h | 6枚 |
 
+**ヘルプ表示（全スクリプト共通）:**
+
+引数に `?`・`-?`・`--?` のいずれかを渡すと、引数一覧・使用例を表示して終了する。
+
+```bash
+python GSM_fax57.py ?
+python ECM_SurfacePressure.py -?
+python synop_report.py --?
+```
+
 ---
 
 ### 自動実行（推奨）

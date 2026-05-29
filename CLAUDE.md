@@ -149,6 +149,16 @@ python JRA55_JetDivergence.py VALID_TIME [--level hPa] [オプション]
 JRA-55 と GRIB2 のエマグラムは、`--start-ft/--steps/--interval` で複数FTを連続作図できる。  
 省略時は `reports/` 以下に PNG + Markdown レポートを自動生成する。
 
+### ヘルプ表示（全スクリプト共通）
+
+引数に `?`・`-?`・`--?` のいずれかを渡すと、そのスクリプトの引数一覧・使用例を表示して終了する。
+
+```bash
+python GSM_fax57.py ?
+python ECM_SurfacePressure.py -?
+python synop_report.py --?
+```
+
 ---
 
 ## JRA-55 認証設定
