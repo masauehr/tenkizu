@@ -220,7 +220,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=
              length=6, pivot='middle', color='black', transform=latlon_proj,
              sizes=dict(emptybarb=0.05))
 
-    ax.coastlines(resolution='50m', color='silver')
+    ax.coastlines(resolution='50m', color='dimgray')
     xticks = np.arange(0, 360.1, 10)
     yticks = np.arange(-90, 90.1, 10)
     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=False, linewidth=1, alpha=0.8)
@@ -347,7 +347,7 @@ def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, o
              length=6, pivot='middle', color='black', transform=latlon_proj,
              sizes=dict(emptybarb=0.05))
 
-    ax.coastlines(resolution='50m', color='silver')
+    ax.coastlines(resolution='50m', color='dimgray')
     xticks = np.arange(0, 360.1, 10)
     yticks = np.arange(-90, 90.1, 10)
     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=False, linewidth=1, alpha=0.8)

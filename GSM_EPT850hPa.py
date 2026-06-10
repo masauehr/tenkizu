@@ -229,7 +229,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, tagHp, output_dir, area=N
     ax.barbs(dsp['lon'][wind_slice[0]], dsp['lat'][wind_slice[1]],
              dsp['u_wind'].values[wind_slice] * 1.944,
              dsp['v_wind'].values[wind_slice] * 1.944,
-             length=5.5, pivot='middle', color='black', transform=latlon_proj)
+             length=5.5, pivot='middle', color='black', transform=latlon_proj, zorder=10)
 
     fig.text(0.5, 0.01,
              f"GSM FT{ft_hours:d}h IT:{dt_str} {tagHp}hPa EPT(K), Wind",
@@ -374,7 +374,7 @@ def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, o
     ax.barbs(dsp['lon'][wind_slice[0]], dsp['lat'][wind_slice[1]],
              dsp['u_wind'].values[wind_slice] * 1.944,
              dsp['v_wind'].values[wind_slice] * 1.944,
-             length=5.5, pivot='middle', color='black', transform=latlon_proj)
+             length=5.5, pivot='middle', color='black', transform=latlon_proj, zorder=10)
 
     avg_label = f"FT{batch_start_h:03d}-{batch_end_h:03d}h_avg{avg_steps}"
     fig.text(0.5, 0.01,

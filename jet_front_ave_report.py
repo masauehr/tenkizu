@@ -347,7 +347,7 @@ def plot_gsm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_d
              length=6, pivot='middle', color='black', transform=latlon_proj,
              sizes=dict(emptybarb=0.05))
 
-    ax.coastlines(resolution='50m', color='silver')
+    ax.coastlines(resolution='50m', color='dimgray')
     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=False, linewidth=1, alpha=0.8)
     gl.xlocator = mticker.FixedLocator(np.arange(0, 360.1, 10))
     gl.ylocator = mticker.FixedLocator(np.arange(-90, 90.1, 10))
@@ -464,7 +464,7 @@ def plot_ecm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_d
              length=6, pivot='middle', color='black', transform=latlon_proj,
              sizes=dict(emptybarb=0.05))
 
-    ax.coastlines(resolution='50m', color='silver')
+    ax.coastlines(resolution='50m', color='dimgray')
     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=False, linewidth=1, alpha=0.8)
     gl.xlocator = mticker.FixedLocator(np.arange(0, 360.1, 10))
     gl.ylocator = mticker.FixedLocator(np.arange(-90, 90.1, 10))
@@ -603,7 +603,7 @@ def plot_gsm_ept850_avg(init_times, output_dir, area, newest_dt_str2, n_days):
     ax.barbs(dsp['lon'][wind_slice[0]], dsp['lat'][wind_slice[1]],
              dsp['u_wind'].values[wind_slice] * 1.944,
              dsp['v_wind'].values[wind_slice] * 1.944,
-             length=5.5, pivot='middle', color='black', transform=latlon_proj)
+             length=5.5, pivot='middle', color='black', transform=latlon_proj, zorder=10)
 
     period_str = f"{init_times[-1].strftime('%Y%m%d%H')}〜{init_times[0].strftime('%Y%m%d%H')}UTC"
     fig.text(0.5, 0.01,
@@ -745,7 +745,7 @@ def plot_ecm_ept850_avg(init_times, output_dir, area, newest_dt_str2, n_days):
     ax.barbs(dsp['lon'][wind_slice[0]], dsp['lat'][wind_slice[1]],
              dsp['u_wind'].values[wind_slice] * 1.944,
              dsp['v_wind'].values[wind_slice] * 1.944,
-             length=5.5, pivot='middle', color='black', transform=latlon_proj)
+             length=5.5, pivot='middle', color='black', transform=latlon_proj, zorder=10)
 
     period_str = f"{init_times[-1].strftime('%Y%m%d%H')}〜{init_times[0].strftime('%Y%m%d%H')}UTC"
     fig.text(0.5, 0.01,
