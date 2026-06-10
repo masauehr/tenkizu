@@ -302,7 +302,7 @@ def main():
         if run_gsm:
             print("--- GSM 850hPa 相当温位 (ワイド) ---")
             ok = run_python(
-                f"GSM_EPT850hPa.py {init_str} {args.start_ft} {n_steps} {ept_area_arg} {avg_arg} --wind-step 8",
+                f"GSM_EPT850hPa.py {init_str} {args.start_ft} {n_steps} {ept_area_arg} {avg_arg} --smooth-size 3 --wind-step 8",
                 script_dir
             )
             if not ok:
@@ -310,7 +310,7 @@ def main():
         if run_ecm:
             print("\n--- ECM 850hPa 相当温位 (ワイド) ---")
             ok = run_python(
-                f"ECM_EPT850hPa.py {init_str} {start_ft_h} {n_steps} {ept_area_arg} {avg_arg} --wind-step 12",
+                f"ECM_EPT850hPa.py {init_str} {start_ft_h} {n_steps} {ept_area_arg} {avg_arg} --smooth-size 6 --wind-step 12",
                 script_dir
             )
             if not ok:
@@ -343,7 +343,7 @@ def main():
             if run_gsm:
                 print(f"  --- GSM 850hPa 相当温位 (ワイド) ---")
                 ok = run_python(
-                    f"GSM_EPT850hPa.py {init_str} {ft_str} 1 {ept_area_arg} --wind-step 8",
+                    f"GSM_EPT850hPa.py {init_str} {ft_str} 1 {ept_area_arg} --smooth-size 3 --wind-step 8",
                     script_dir
                 )
                 if not ok:
@@ -351,7 +351,7 @@ def main():
             if run_ecm:
                 print(f"  --- ECM 850hPa 相当温位 (ワイド) ---")
                 ok = run_python(
-                    f"ECM_EPT850hPa.py {init_str} {ft_h} 1 {ept_area_arg} --wind-step 12",
+                    f"ECM_EPT850hPa.py {init_str} {ft_h} 1 {ept_area_arg} --smooth-size 6 --wind-step 12",
                     script_dir
                 )
                 if not ok:

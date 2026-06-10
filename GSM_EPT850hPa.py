@@ -25,6 +25,7 @@ import requests
 
 import metpy.calc as mpcalc
 from metpy.units import units
+from scipy.ndimage import uniform_filter
 
 BASE_URL = "http://database.rish.kyoto-u.ac.jp/arch/jmadata/data/gpv/original"
 HEADERS  = {"User-Agent": "Mozilla/5.0 (compatible; GSM-Downloader/1.0)"}
@@ -104,6 +105,8 @@ def parse_args():
                         help='描画範囲 lonW lonE latS latN（デフォルト: 115 151 20 50）')
     parser.add_argument('--avg_steps', type=int, default=1,
                         help='平均するFT個数（1=平均なし、n指定時は6h間隔でn個を平均して1枚、デフォルト: 1）')
+    parser.add_argument('--smooth-size', type=int, default=1,
+                        help='uniform_filterのサイズ（1=なし、デフォルト: 1）')
     parser.add_argument('--wind-step', type=int, default=5,
                         help='風矢羽の間引き格子数（デフォルト: 5）')
 
@@ -115,7 +118,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, tagHp, output_dir, area=None, wind_step=5):
+def plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, tagHp, output_dir, area=None, smooth_size=1, wind_step=5):
     ft_hours = ddhh_to_hours(ft_ddhh)
 
     gr_fn   = f"Z__C_RJTD_{i_year:04d}{i_month:02d}{i_day:02d}{i_hourZ:02d}0000_GSM_GPV_Rgl_FD{ft_ddhh:04d}_grib2.bin"
@@ -139,6 +142,12 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, tagHp, output_dir, area=N
     valWv, latWv, lonWv = grbWv.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
     valTm, latTm, lonTm = grbTm.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
     valRh, latRh, lonRh = grbRh.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
+
+    if smooth_size > 1:
+        valWu = uniform_filter(valWu, size=smooth_size)
+        valWv = uniform_filter(valWv, size=smooth_size)
+        valTm = uniform_filter(valTm, size=smooth_size)
+        valRh = uniform_filter(valRh, size=smooth_size)
 
     ds = xr.Dataset(
         {
@@ -234,7 +243,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, tagHp, output_dir, area=N
     return True
 
 
-def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, output_dir, area=None, wind_step=5):
+def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, output_dir, area=None, smooth_size=1, wind_step=5):
     """avg_steps個のFT（6h間隔）の生データを平均してEPTを計算し1枚の天気図を生成する"""
     ft_list = [batch_start_h + i * 6 for i in range(avg_steps)]
     batch_end_h = ft_list[-1]
@@ -286,6 +295,12 @@ def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, o
     valWv = np.mean(valWv_all, axis=0)
     valTm = np.mean(valTm_all, axis=0)
     valRh = np.mean(valRh_all, axis=0)
+
+    if smooth_size > 1:
+        valWu = uniform_filter(valWu, size=smooth_size)
+        valWv = uniform_filter(valWv, size=smooth_size)
+        valTm = uniform_filter(valTm, size=smooth_size)
+        valRh = uniform_filter(valRh, size=smooth_size)
 
     ds = xr.Dataset(
         {
@@ -399,13 +414,13 @@ def main():
         success = 0
         for step_i in range(args.n_steps):
             batch_start_h = start_ft_h + step_i * (6 * args.avg_steps)
-            if plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, args.avg_steps, args.level, "./output", area=args.area, wind_step=args.wind_step):
+            if plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, args.avg_steps, args.level, "./output", area=args.area, smooth_size=args.smooth_size, wind_step=args.wind_step):
                 success += 1
         print(f"\n完了: {success}/{args.n_steps}枚 出力先: ./output/")
     else:
         success = 0
         for ft_ddhh in ft_list:
-            if plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, args.level, "./output", area=args.area, wind_step=args.wind_step):
+            if plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, args.level, "./output", area=args.area, smooth_size=args.smooth_size, wind_step=args.wind_step):
                 success += 1
         print(f"\n完了: {success}/{args.n_steps}枚 出力先: ./output/")
 

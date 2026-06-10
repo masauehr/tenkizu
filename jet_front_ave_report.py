@@ -535,6 +535,11 @@ def plot_gsm_ept850_avg(init_times, output_dir, area, newest_dt_str2, n_days):
     valTm = np.mean(valTm_all, axis=0)
     valRh = np.mean(valRh_all, axis=0)
 
+    valWu = uniform_filter(valWu, size=3)
+    valWv = uniform_filter(valWv, size=3)
+    valTm = uniform_filter(valTm, size=3)
+    valRh = uniform_filter(valRh, size=3)
+
     ds = xr.Dataset(
         {
             "u_wind":          (["lat", "lon"], valWu * units('m/s')),
@@ -648,7 +653,7 @@ def plot_ecm_ept850_avg(init_times, output_dir, area, newest_dt_str2, n_days):
         _valTm, latTm, lonTm  = grbTm.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
         _valRh, _, _          = grbRh.data(lat1=latS, lat2=latN, lon1=lonW, lon2=lonE)
 
-        _s = 3
+        _s = 6
         _valHt = uniform_filter(_valHt, size=_s)
         _valWu = uniform_filter(_valWu, size=_s)
         _valWv = uniform_filter(_valWv, size=_s)
