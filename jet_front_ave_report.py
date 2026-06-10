@@ -314,7 +314,7 @@ def plot_gsm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_d
     ax.set_extent(area, latlon_proj)
 
     ax.contourf(lon, lat, valHt, levels=levels_ht,
-                cmap='Blues', alpha=0.4, extend='both', transform=latlon_proj)
+                cmap='RdBu_r', alpha=0.5, extend='both', transform=latlon_proj)
 
     if not no_isotac:
         cn_ws = ax.contourf(lon, lat, ws_kt, levels_ws, cmap='YlOrRd', extend='max',
@@ -428,7 +428,7 @@ def plot_ecm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_d
     ax.set_extent(area, latlon_proj)
 
     ax.contourf(lon, lat, valHt, levels=levels_ht,
-                cmap='Blues', alpha=0.4, extend='both', transform=latlon_proj)
+                cmap='RdBu_r', alpha=0.5, extend='both', transform=latlon_proj)
 
     if not no_isotac:
         cn_ws = ax.contourf(lon, lat, ws_kt, levels_ws, cmap='YlOrRd', extend='max',

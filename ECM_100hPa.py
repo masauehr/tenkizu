@@ -183,7 +183,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=
     ax.set_extent(areaAry, latlon_proj)
 
     ax.contourf(lon, lat, valHt, levels=levels_ht,
-                cmap='Blues', alpha=0.4, extend='both', transform=latlon_proj)
+                cmap='RdBu_r', alpha=0.5, extend='both', transform=latlon_proj)
 
     if not no_isotac:
         cn_ws = ax.contourf(lon, lat, ws_kt,
@@ -311,7 +311,7 @@ def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, o
     ax.set_extent(areaAry, latlon_proj)
 
     ax.contourf(lon, lat, valHt, levels=levels_ht,
-                cmap='Blues', alpha=0.4, extend='both', transform=latlon_proj)
+                cmap='RdBu_r', alpha=0.5, extend='both', transform=latlon_proj)
 
     if not no_isotac:
         cn_ws = ax.contourf(lon, lat, ws_kt, levels_ws, cmap='YlOrRd', extend='max',
