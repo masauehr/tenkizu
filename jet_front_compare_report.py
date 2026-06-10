@@ -334,6 +334,48 @@ def main():
 
     print(f"MDファイル生成: reports/compare_{init_str}/{md_name}")
 
+    # ---- git add → commit → push（--push 指定時のみ）----
+    if not args.push:
+        print("\nGitHub push はスキップ（--push を付けると実行）")
+    else:
+        print("\n--- GitHub へアップロード ---")
+        rel_path = f"reports/compare_{init_str}"
+
+        # git add
+        cmd = f"git add {rel_path}"
+        print(f"実行: {cmd}")
+        result = subprocess.run(cmd, shell=True, cwd=_SCRIPT_DIR)
+        if result.returncode != 0:
+            print("エラー: git add 失敗")
+            sys.exit(1)
+
+        # 変更があるか確認
+        result = subprocess.run("git diff --staged --quiet", shell=True, cwd=_SCRIPT_DIR)
+        if result.returncode == 0:
+            print("変更なし: 既にアップロード済みです（コミット・プッシュをスキップ）")
+        else:
+            # git commit
+            commit_msg = f"report: ジェット・前線解析 複数初期時刻比較レポート ({init_str})"
+            cmd = f'git commit -m "{commit_msg}"'
+            print(f"実行: {cmd}")
+            result = subprocess.run(cmd, shell=True, cwd=_SCRIPT_DIR)
+            if result.returncode != 0:
+                print("エラー: git commit 失敗")
+                sys.exit(1)
+
+            # git push
+            cmd = "git push"
+            print(f"実行: {cmd}")
+            result = subprocess.run(cmd, shell=True, cwd=_SCRIPT_DIR)
+            if result.returncode != 0:
+                print("push 失敗。30秒待ってリトライします...")
+                import time
+                time.sleep(30)
+                result = subprocess.run(cmd, shell=True, cwd=_SCRIPT_DIR)
+            if result.returncode != 0:
+                print("エラー: git push 失敗（手動で 'git push' を実行してください）")
+                sys.exit(1)
+
     print(f"\n{'='*60}")
     print(f" 完了")
     print(f" レポート: reports/compare_{init_str}/{md_name}")
