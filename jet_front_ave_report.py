@@ -347,7 +347,7 @@ def plot_gsm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_d
              length=6, pivot='middle', color='black', transform=latlon_proj,
              sizes=dict(emptybarb=0.05))
 
-    ax.coastlines(resolution='50m', color='lightgray')
+    ax.coastlines(resolution='50m', color='silver')
     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=False, linewidth=1, alpha=0.8)
     gl.xlocator = mticker.FixedLocator(np.arange(0, 360.1, 10))
     gl.ylocator = mticker.FixedLocator(np.arange(-90, 90.1, 10))
@@ -464,7 +464,7 @@ def plot_ecm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_d
              length=6, pivot='middle', color='black', transform=latlon_proj,
              sizes=dict(emptybarb=0.05))
 
-    ax.coastlines(resolution='50m', color='lightgray')
+    ax.coastlines(resolution='50m', color='silver')
     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=False, linewidth=1, alpha=0.8)
     gl.xlocator = mticker.FixedLocator(np.arange(0, 360.1, 10))
     gl.ylocator = mticker.FixedLocator(np.arange(-90, 90.1, 10))
@@ -586,15 +586,15 @@ def plot_gsm_ept850_avg(init_times, output_dir, area, newest_dt_str2, n_days):
     fig.colorbar(cnf_ept, orientation='horizontal', shrink=0.74, aspect=40, pad=0.01, cax=ax_ept)
 
     cn_ept0 = ax.contour(dsp['lon'], dsp['lat'], dsp['Equivalent_Potential_temperature'],
-                         colors='#909090', linewidths=0.3, levels=levels_ept0, transform=latlon_proj)
+                         colors='#707070', linewidths=0.3, levels=levels_ept0, transform=latlon_proj)
     ax.clabel(cn_ept0, levels_ept0i, fontsize=8, inline=True, inline_spacing=5,
-              fmt='%i', rightside_up=True, colors='#909090')
+              fmt='%i', rightside_up=True, colors='#707070')
     cn_ept1 = ax.contour(dsp['lon'], dsp['lat'], dsp['Equivalent_Potential_temperature'],
-                         colors='#909090', linewidths=1.0, levels=levels_ept1, transform=latlon_proj)
+                         colors='#707070', linewidths=1.0, levels=levels_ept1, transform=latlon_proj)
     ax.clabel(cn_ept1, levels_ept1, fontsize=12, inline=True, inline_spacing=5,
-              fmt='%i', rightside_up=True, colors='#909090')
+              fmt='%i', rightside_up=True, colors='#707070')
 
-    ax.coastlines(resolution='50m', linewidth=1.6, color='lightgray')
+    ax.coastlines(resolution='50m', linewidth=1.6, color='lightgray', zorder=1.5)
     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=False, linewidth=1, alpha=0.8)
     gl.xlocator = mticker.FixedLocator(np.arange(0, 360, 10))
     gl.ylocator = mticker.FixedLocator(np.arange(-90, 90.1, 10))
@@ -728,15 +728,15 @@ def plot_ecm_ept850_avg(init_times, output_dir, area, newest_dt_str2, n_days):
     fig.colorbar(cnf_ept, orientation='horizontal', shrink=0.74, aspect=40, pad=0.01, cax=ax_ept)
 
     cn_ept0 = ax.contour(dsp['lon'], dsp['lat'], dsp['Equivalent_Potential_temperature'],
-                         colors='#909090', linewidths=0.3, levels=levels_ept0, transform=latlon_proj)
+                         colors='#707070', linewidths=0.3, levels=levels_ept0, transform=latlon_proj)
     ax.clabel(cn_ept0, levels_ept0i, fontsize=8, inline=True, inline_spacing=5,
-              fmt='%i', rightside_up=True, colors='#909090')
+              fmt='%i', rightside_up=True, colors='#707070')
     cn_ept1 = ax.contour(dsp['lon'], dsp['lat'], dsp['Equivalent_Potential_temperature'],
-                         colors='#909090', linewidths=1.0, levels=levels_ept1, transform=latlon_proj)
+                         colors='#707070', linewidths=1.0, levels=levels_ept1, transform=latlon_proj)
     ax.clabel(cn_ept1, levels_ept1, fontsize=12, inline=True, inline_spacing=5,
-              fmt='%i', rightside_up=True, colors='#909090')
+              fmt='%i', rightside_up=True, colors='#707070')
 
-    ax.coastlines(resolution='50m', linewidth=1.6, color='lightgray')
+    ax.coastlines(resolution='50m', linewidth=1.6, color='lightgray', zorder=1.5)
     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=False, linewidth=1, alpha=0.8)
     gl.xlocator = mticker.FixedLocator(np.arange(0, 360, 10))
     gl.ylocator = mticker.FixedLocator(np.arange(-90, 90.1, 10))
