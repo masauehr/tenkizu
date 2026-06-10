@@ -1361,3 +1361,11 @@ data/Jra55/
 | 2026-05-27 | 全ECM系スクリプトの `?` ヘルプ epilog にデフォルト描画設定（area/smooth-size/wind-step）を追加 |
 | 2026-05-27 | `ECM_GSM_SurfacePressure.py` に Step 0 サーバーデータ確認処理を追加（RISH/ECMWF サーバーへ HEAD リクエストでファイル存在確認、未公開時は処理中断） |
 | 2026-05-27 | `synop_report.py`・`jet_front_report.py`・`jet_front_wide_report.py`・`upper_wind_report.py`・`jet_front_ave_report.py` の5本に Step 0 サーバーデータ確認処理を追加。`jet_front_wide_report.py` は `--avg_steps` 使用時の全サブFTにも対応、`jet_front_ave_report.py` は複数初期時刻をまとめて確認 |
+| 2026-06-10 | `jet_front_wide_report.py`・`jet_front_ave_report.py` の 850hPa 相当温位（EPT）描画範囲を上層（100hPa）と統一（`[70, 180, -12, 30]`） |
+| 2026-06-10 | `GSM_100hPa.py`・`ECM_100hPa.py` に `--no-isotac` オプション追加（ISOTAC シェード/コンターを非表示にし、高度コンター＋矢羽のみ描画） |
+| 2026-06-10 | upper 等高度線の間隔を 120m → 60m に変更。高度場を面的にシェード表示（`contourf`）に切り替え、カスタムカラーマップ（水色→白→橙）＋`TwoSlopeNorm`（気圧面ごとに平均値を白中心に自動調整）を採用 |
+| 2026-06-10 | `GSM_EPT850hPa.py`・`ECM_EPT850hPa.py` に `--wind-step` オプション追加（デフォルト 5）。wide 版レポート（`jet_front_wide_report.py`・`jet_front_ave_report.py`）のみ GSM=8・ECM=12 を明示指定し、矢羽間引きを広域表示に最適化。synop等の通常版は影響なし |
+| 2026-06-10 | 850hPa EPT シェードに `alpha=0.7` を追加（色が濃すぎたため透明度を調整） |
+| 2026-06-10 | `GSM_EPT850hPa.py` に `--smooth-size` オプション追加（デフォルト 1=なし）。wide 版のみ GSM=3・ECM=6 を指定し、広域表示向けにスムージングを強化（約 1.5° 相当） |
+| 2026-06-10 | upper 高度コンターの色を `black` → `green` に変更。850hPa EPT コンター（線・ラベル）を `#707070`（セメントグレー）に変更。海岸線を upper=`dimgray`・850hPa=`lightgray`（`zorder=1.5` でシェードの前面・コンターの背面に配置）に変更 |
+| 2026-06-10 | 850hPa 矢羽に `zorder=10` を追加し最前面に表示 |
