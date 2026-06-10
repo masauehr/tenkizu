@@ -113,8 +113,15 @@ def parse_args():
 デフォルト描画設定:
   --area        115 151 20 50  東経115〜151°、北緯20〜50°
   --smooth-size 3              3×3格子平均スムージング（ECM 0.25°→約0.75°相当）
-  --wind-step   5              風矢羽を5格子おき（約1.25度間隔）
-        """
+  --wind-step   10             風矢羽を10格子おき（約2.5度間隔）
+
+実行環境（conda の場合）:
+  conda activate met_env_310
+  python ECM_EPT850hPa.py [引数]
+
+  ※ 環境名（met_env_310）は利用者の構築状況により異なります。
+     pygrib / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
+"""
     )
     parser.add_argument('init_time', type=str, help='初期時刻 YYYYMMDDHH（UTC）')
     parser.add_argument('start_ft',  type=int, nargs='?', default=0, help='開始予報時間（時間数）例: 0, 12, 24')
@@ -127,7 +134,7 @@ def parse_args():
                         help='平均するFT個数（1=平均なし、n指定時は6h間隔でn個を平均して1枚、デフォルト: 1）')
     parser.add_argument('--smooth-size', type=int, default=3,
                         help='uniform_filterのサイズ（デフォルト: 3）')
-    parser.add_argument('--wind-step', type=int, default=5,
+    parser.add_argument('--wind-step', type=int, default=10,
                         help='風矢羽の間引き格子数（デフォルト: 5）')
 
     # ? / -? / --? でヘルプ表示
@@ -138,7 +145,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=None, smooth_size=3, wind_step=5):
+def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=None, smooth_size=3, wind_step=10):
     # ECMWFファイル名を構築
     if i_hourZ in (0, 12):
         ecm_fn = f"{i_year:04d}{i_month:02d}{i_day:02d}{i_hourZ:02d}0000-{ft_hours:d}h-oper-fc.grib2"
@@ -273,7 +280,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=
     return True
 
 
-def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, output_dir, area=None, smooth_size=3, wind_step=5):
+def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, output_dir, area=None, smooth_size=3, wind_step=10):
     """avg_steps個のFT（6h間隔）の生データを平均してEPTを計算し1枚の天気図を生成する"""
     ft_list = [batch_start_h + i * 6 for i in range(avg_steps)]
     batch_end_h = ft_list[-1]

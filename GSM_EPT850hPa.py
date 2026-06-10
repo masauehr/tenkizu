@@ -83,7 +83,14 @@ def parse_args():
   python GSM_EPT850hPa.py 2026041200           # FT=0h 1枚
   python GSM_EPT850hPa.py 2026041200 0000 5   # FT=0,6,12,18,24h 5枚
   python GSM_EPT850hPa.py 2026041200 0012 1   # FT=12h 1枚
-        """
+
+実行環境（conda の場合）:
+  conda activate met_env_310
+  python GSM_EPT850hPa.py [引数]
+
+  ※ 環境名（met_env_310）は利用者の構築状況により異なります。
+     pygrib / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
+"""
     )
     parser.add_argument('init_time', type=str, help='初期時刻 YYYYMMDDHH（UTC）')
     parser.add_argument('start_ft',  type=str, nargs='?', default='0000',
@@ -207,7 +214,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, tagHp, output_dir, area=N
     gl.ylocator = mticker.FixedLocator(yticks)
 
     # 風矢羽
-    wind_slice = (slice(None, None, 5), slice(None, None, 5))
+    wind_slice = (slice(None, None, 10), slice(None, None, 10))
     ax.barbs(dsp['lon'][wind_slice[0]], dsp['lat'][wind_slice[1]],
              dsp['u_wind'].values[wind_slice] * 1.944,
              dsp['v_wind'].values[wind_slice] * 1.944,
@@ -346,7 +353,7 @@ def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, o
     gl.xlocator = mticker.FixedLocator(xticks)
     gl.ylocator = mticker.FixedLocator(yticks)
 
-    wind_slice = (slice(None, None, 5), slice(None, None, 5))
+    wind_slice = (slice(None, None, 10), slice(None, None, 10))
     ax.barbs(dsp['lon'][wind_slice[0]], dsp['lat'][wind_slice[1]],
              dsp['u_wind'].values[wind_slice] * 1.944,
              dsp['v_wind'].values[wind_slice] * 1.944,
