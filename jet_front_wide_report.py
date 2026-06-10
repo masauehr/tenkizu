@@ -6,7 +6,7 @@
 # 描画領域は通常版の中心を固定して東西2倍・南北1.5倍に拡大し、
 # さらに北側1/3を南側に振り替えて南方向にシフトしている。
 #   上層   : 通常[84,156,17,55] → ワイド[70,180,-12,30]（東西110°、南北42°）
-#   850hPa : 通常[115,151,20,50] → ワイド[97,169,-2.5,42.5]（東西72°、南北45°）
+#   850hPa : 上層と同一[70,180,-12,30]（東西110°、南北42°）
 #
 # 使用例:
 #   python jet_front_wide_report.py 2026041200                    # GSMのみ FT=0h 1枚
@@ -35,7 +35,7 @@ import requests
 # ワイド版描画領域 [lonW, lonE, latS, latN]
 # 東西2倍・南北1.5倍（中心固定）→ さらに北側1/3を南側に振り替え
 AREA_UPPER = [70, 180, -12, 30]  # 上層: lonW=70 lonE=180 latS=-12 latN=30
-AREA_EPT   = [97, 169,  -2.5, 42.5]  # 850hPa: 東西72°、南北45°（南寄り）
+AREA_EPT   = [70, 180, -12, 30]  # 850hPa: 上層と同一範囲
 
 # 時間プリセット（avg_steps == 1 のときのみ有効）
 PRESETS = {
@@ -69,7 +69,14 @@ def parse_args():
   python jet_front_wide_report.py 2026041200 --levels 100 50         # 上層風を100+50hPa
   python jet_front_wide_report.py 2026041200 0000 5 --ecm --levels 100 50
   python jet_front_wide_report.py 2026041200 0000 3 --avg_steps 4    # 平均モード（6h固定）
-        """
+
+実行環境（conda の場合）:
+  conda activate met_env_310
+  python jet_front_wide_report.py [引数]
+
+  ※ 環境名（met_env_310）は利用者の構築状況により異なります。
+     pygrib / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
+"""
     )
     parser.add_argument('init_time', type=str, help='初期時刻 YYYYMMDDHH（UTC）')
     parser.add_argument('start_ft',  type=str, nargs='?', default='0000',

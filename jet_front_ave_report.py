@@ -42,7 +42,7 @@ from scipy.ndimage import uniform_filter
 
 # ワイド版描画領域（jet_front_wide_report.py と同じ）
 AREA_UPPER = [70, 180, -12, 30]
-AREA_EPT   = [97, 169, -2.5, 42.5]
+AREA_EPT   = [70, 180, -12, 30]  # 上層と同一範囲
 
 BASE_URL_GSM = "http://database.rish.kyoto-u.ac.jp/arch/jmadata/data/gpv/original"
 BASE_URL_ECM = "https://data.ecmwf.int/forecasts"
@@ -135,7 +135,14 @@ def parse_args():
   python jet_front_ave_report.py 2026050600 3 --ecm-only   # ECMのみ 3日平均
   python jet_front_ave_report.py 2026050600 3 --levels 100 50
   python jet_front_ave_report.py 2026050600 3 --push
-        """
+
+実行環境（conda の場合）:
+  conda activate met_env_310
+  python jet_front_ave_report.py [引数]
+
+  ※ 環境名（met_env_310）は利用者の構築状況により異なります。
+     pygrib / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
+"""
     )
     parser.add_argument('init_time', type=str,
                         help='最新の初期時刻 YYYYMMDDHH（UTC、00 or 12 のみ）')
