@@ -206,7 +206,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=
                   inline_spacing=5, fmt='%i', rightside_up=True)
 
     cn_hgt = ax.contour(lon, lat, valHt,
-                        colors='black', linewidths=1.2, levels=levels_ht,
+                        colors='green', linewidths=1.2, levels=levels_ht,
                         transform=latlon_proj)
     ax.clabel(cn_hgt, levels_ht[::2], fontsize=14, inline=True,
               inline_spacing=5, fmt='%i', rightside_up=True)
@@ -220,7 +220,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=
              length=6, pivot='middle', color='black', transform=latlon_proj,
              sizes=dict(emptybarb=0.05))
 
-    ax.coastlines(resolution='50m')
+    ax.coastlines(resolution='50m', color='lightgray')
     xticks = np.arange(0, 360.1, 10)
     yticks = np.arange(-90, 90.1, 10)
     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=False, linewidth=1, alpha=0.8)
@@ -334,7 +334,7 @@ def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, o
         ax.clabel(cn_ws_line, fontsize=14, inline=True, colors='blue',
                   inline_spacing=5, fmt='%i', rightside_up=True)
 
-    cn_hgt = ax.contour(lon, lat, valHt, colors='black', linewidths=1.2, levels=levels_ht,
+    cn_hgt = ax.contour(lon, lat, valHt, colors='green', linewidths=1.2, levels=levels_ht,
                         transform=latlon_proj)
     ax.clabel(cn_hgt, levels_ht[::2], fontsize=14, inline=True,
               inline_spacing=5, fmt='%i', rightside_up=True)
@@ -347,7 +347,7 @@ def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, o
              length=6, pivot='middle', color='black', transform=latlon_proj,
              sizes=dict(emptybarb=0.05))
 
-    ax.coastlines(resolution='50m')
+    ax.coastlines(resolution='50m', color='lightgray')
     xticks = np.arange(0, 360.1, 10)
     yticks = np.arange(-90, 90.1, 10)
     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=False, linewidth=1, alpha=0.8)

@@ -244,16 +244,16 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=
 
     # EPT等値線（細線）
     cn_ept0 = ax.contour(dsp['lon'], dsp['lat'], dsp['Equivalent_Potential_temperature'],
-                         colors='black', linewidths=0.3, levels=levels_ept0, transform=latlon_proj)
+                         colors='#909090', linewidths=0.3, levels=levels_ept0, transform=latlon_proj)
     ax.clabel(cn_ept0, levels_ept0i, fontsize=8, inline=True,
-              inline_spacing=5, fmt='%i', rightside_up=True, colors='black')
+              inline_spacing=5, fmt='%i', rightside_up=True, colors='#909090')
     # EPT等値線（太線）
     cn_ept1 = ax.contour(dsp['lon'], dsp['lat'], dsp['Equivalent_Potential_temperature'],
-                         colors='black', linewidths=1.0, levels=levels_ept1, transform=latlon_proj)
+                         colors='#909090', linewidths=1.0, levels=levels_ept1, transform=latlon_proj)
     ax.clabel(cn_ept1, levels_ept1, fontsize=12, inline=True,
-              inline_spacing=5, fmt='%i', rightside_up=True, colors='black')
+              inline_spacing=5, fmt='%i', rightside_up=True, colors='#909090')
 
-    ax.coastlines(resolution='50m', linewidth=1.6)
+    ax.coastlines(resolution='50m', linewidth=1.6, color='lightgray')
     xticks = np.arange(0, 360, 10)
     yticks = np.arange(-90, 90.1, 10)
     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=False, linewidth=1, alpha=0.8)
@@ -402,15 +402,15 @@ def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, o
                  aspect=40, pad=0.01, cax=ax_ept)
 
     cn_ept0 = ax.contour(dsp['lon'], dsp['lat'], dsp['Equivalent_Potential_temperature'],
-                         colors='black', linewidths=0.3, levels=levels_ept0, transform=latlon_proj)
+                         colors='#909090', linewidths=0.3, levels=levels_ept0, transform=latlon_proj)
     ax.clabel(cn_ept0, levels_ept0i, fontsize=8, inline=True,
-              inline_spacing=5, fmt='%i', rightside_up=True, colors='black')
+              inline_spacing=5, fmt='%i', rightside_up=True, colors='#909090')
     cn_ept1 = ax.contour(dsp['lon'], dsp['lat'], dsp['Equivalent_Potential_temperature'],
-                         colors='black', linewidths=1.0, levels=levels_ept1, transform=latlon_proj)
+                         colors='#909090', linewidths=1.0, levels=levels_ept1, transform=latlon_proj)
     ax.clabel(cn_ept1, levels_ept1, fontsize=12, inline=True,
-              inline_spacing=5, fmt='%i', rightside_up=True, colors='black')
+              inline_spacing=5, fmt='%i', rightside_up=True, colors='#909090')
 
-    ax.coastlines(resolution='50m', linewidth=1.6)
+    ax.coastlines(resolution='50m', linewidth=1.6, color='lightgray')
     xticks = np.arange(0, 360, 10)
     yticks = np.arange(-90, 90.1, 10)
     gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=False, linewidth=1, alpha=0.8)
