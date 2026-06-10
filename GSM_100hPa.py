@@ -14,12 +14,19 @@ import pygrib
 import matplotlib.pyplot as plt
 from pathlib import Path
 import matplotlib.ticker as mticker
+import matplotlib.colors as mcolors
 import numpy as np
 import cartopy.crs as ccrs
 import sys
 import argparse
 from pathlib import Path
 import requests
+
+# 高度シェード用カラーマップ: 水色（低）→ 白（中）→ 橙（高）
+_CMAP_HGT = mcolors.LinearSegmentedColormap.from_list(
+    'hgt_cyan_white_orange',
+    [(0.0, '#4FC3F7'), (0.5, '#FFFFFF'), (1.0, '#FFB74D')]
+)
 
 BASE_URL = "http://database.rish.kyoto-u.ac.jp/arch/jmadata/data/gpv/original"
 HEADERS  = {"User-Agent": "Mozilla/5.0 (compatible; GSM-Downloader/1.0)"}
@@ -163,8 +170,11 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, tagHp, output_dir, area=N
     ax = fig.add_subplot(1, 1, 1, projection=proj)
     ax.set_extent(areaAry, latlon_proj)
 
+    _vcenter = float(np.mean(valHt))
+    _norm_hgt = mcolors.TwoSlopeNorm(
+        vmin=float(levels_ht[0]), vcenter=_vcenter, vmax=float(levels_ht[-1]))
     ax.contourf(lon, lat, valHt, levels=levels_ht,
-                cmap='RdBu_r', alpha=0.5, extend='both', transform=latlon_proj)
+                cmap=_CMAP_HGT, norm=_norm_hgt, alpha=0.5, extend='both', transform=latlon_proj)
 
     if not no_isotac:
         cn_ws = ax.contourf(lon, lat, ws_kt,
@@ -285,8 +295,11 @@ def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, o
     ax = fig.add_subplot(1, 1, 1, projection=proj)
     ax.set_extent(areaAry, latlon_proj)
 
+    _vcenter = float(np.mean(valHt))
+    _norm_hgt = mcolors.TwoSlopeNorm(
+        vmin=float(levels_ht[0]), vcenter=_vcenter, vmax=float(levels_ht[-1]))
     ax.contourf(lon, lat, valHt, levels=levels_ht,
-                cmap='RdBu_r', alpha=0.5, extend='both', transform=latlon_proj)
+                cmap=_CMAP_HGT, norm=_norm_hgt, alpha=0.5, extend='both', transform=latlon_proj)
 
     if not no_isotac:
         cn_ws = ax.contourf(lon, lat, ws_kt, levels_ws, cmap='YlOrRd', extend='max',
