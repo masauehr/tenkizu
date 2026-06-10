@@ -95,6 +95,8 @@ def parse_args():
                         help='GitHub へ git push する（省略時はローカル保存のみ）')
     parser.add_argument('--avg_steps', type=int, default=1,
                         help='平均するFT個数（1=平均なし、n指定時は6h間隔でn個を平均して1枚、デフォルト: 1）')
+    parser.add_argument('--no-isotac', action='store_true',
+                        help='上層風図のISOTACシェード・等風速線を非表示にし等高度線＋矢羽のみにする')
 
     # ? / -? / --? でヘルプ表示
     if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
@@ -254,7 +256,7 @@ def main():
     else:
         ft_label = f"FT{start_ft_h}-{end_ft_h}_{interval}h"
 
-    upper_area_arg = f"--area {area_str(AREA_UPPER)}"
+    upper_area_arg = f"--area {area_str(AREA_UPPER)}" + (" --no-isotac" if args.no_isotac else "")
     ept_area_arg   = f"--area {area_str(AREA_EPT)}"
     avg_arg        = f"--avg_steps {avg_steps}" if avg_steps > 1 else ""
 

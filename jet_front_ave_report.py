@@ -156,6 +156,8 @@ def parse_args():
                         help='ECMWFのみ実行する（GSMをスキップ）')
     parser.add_argument('--push',    action='store_true',
                         help='GitHub へ git push する（省略時はローカル保存のみ）')
+    parser.add_argument('--no-isotac', action='store_true',
+                        help='上層風図のISOTACシェード・等風速線を非表示にし等高度線＋矢羽のみにする')
 
     # ? / -? / --? でヘルプ表示
     if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
@@ -253,7 +255,7 @@ def copy_png(src, report_dir, label):
 
 # ---- 描画関数 ----
 
-def plot_gsm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_days):
+def plot_gsm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_days, no_isotac=False):
     """複数初期時刻のFT=0h GSMデータを平均して上層風天気図を生成する"""
     valHt_all, valWu_all, valWv_all = [], [], []
     lat = lon = None
@@ -305,17 +307,19 @@ def plot_gsm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_d
     proj        = ccrs.Stereographic(central_latitude=60, central_longitude=140)
     latlon_proj = ccrs.PlateCarree()
 
+    bottom = 0.08 if no_isotac else 0.18
     fig = plt.figure(figsize=(13, 9))
-    plt.subplots_adjust(left=0, right=1, bottom=0.18, top=0.98)
+    plt.subplots_adjust(left=0, right=1, bottom=bottom, top=0.98)
     ax = fig.add_subplot(1, 1, 1, projection=proj)
     ax.set_extent(area, latlon_proj)
 
-    cn_ws = ax.contourf(lon, lat, ws_kt, levels_ws, cmap='YlOrRd', extend='max',
-                        alpha=0.65, transform=latlon_proj)
-    cn_ws_line = ax.contour(lon, lat, ws_kt, levels_ws, colors='blue', linewidths=1.5,
-                             transform=latlon_proj)
-    ax.clabel(cn_ws_line, fontsize=14, inline=True, colors='blue',
-              inline_spacing=5, fmt='%i', rightside_up=True)
+    if not no_isotac:
+        cn_ws = ax.contourf(lon, lat, ws_kt, levels_ws, cmap='YlOrRd', extend='max',
+                            alpha=0.65, transform=latlon_proj)
+        cn_ws_line = ax.contour(lon, lat, ws_kt, levels_ws, colors='blue', linewidths=1.5,
+                                transform=latlon_proj)
+        ax.clabel(cn_ws_line, fontsize=14, inline=True, colors='blue',
+                  inline_spacing=5, fmt='%i', rightside_up=True)
 
     cn_hgt = ax.contour(lon, lat, valHt, colors='black', linewidths=1.2, levels=levels_ht,
                         transform=latlon_proj)
@@ -336,13 +340,15 @@ def plot_gsm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_d
     gl.ylocator = mticker.FixedLocator(np.arange(-90, 90.1, 10))
 
     period_str = f"{init_times[-1].strftime('%Y%m%d%H')}〜{init_times[0].strftime('%Y%m%d%H')}UTC"
-    fig.text(0.5, 0.13,
-             f"GSM {n_days}day avg (FT=0h×{len(init_times)}) {period_str} "
-             f"{tagHp}hPa Height(m), ISOTAC(kt), Wind(kt)",
+    title_elems = f"{tagHp}hPa Height(m), Wind(kt)" if no_isotac else f"{tagHp}hPa Height(m), ISOTAC(kt), Wind(kt)"
+    title_y = 0.02 if no_isotac else 0.13
+    fig.text(0.5, title_y,
+             f"GSM {n_days}day avg (FT=0h×{len(init_times)}) {period_str} {title_elems}",
              ha='center', va='bottom', size=12)
 
-    cb_ax = fig.add_axes([0.1, 0.04, 0.8, 0.025])
-    fig.colorbar(cn_ws, cax=cb_ax, orientation='horizontal', label='Wind Speed (kt)')
+    if not no_isotac:
+        cb_ax = fig.add_axes([0.1, 0.04, 0.8, 0.025])
+        fig.colorbar(cn_ws, cax=cb_ax, orientation='horizontal', label='Wind Speed (kt)')
 
     os.makedirs(output_dir, exist_ok=True)
     out_fn = f"{output_dir}/{newest_dt_str2}_AVG{n_days}d_GSM_{tagHp}hPa_Height_Wind.png"
@@ -352,7 +358,7 @@ def plot_gsm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_d
     return True
 
 
-def plot_ecm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_days):
+def plot_ecm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_days, no_isotac=False):
     """複数初期時刻のFT=0h ECMデータを平均して上層風天気図を生成する"""
     data_dir = str(_SCRIPT_DIR / "data" / "ecm")
     valHt_all, valWu_all, valWv_all = [], [], []
@@ -412,17 +418,19 @@ def plot_ecm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_d
     proj        = ccrs.Stereographic(central_latitude=60, central_longitude=140)
     latlon_proj = ccrs.PlateCarree()
 
+    bottom = 0.08 if no_isotac else 0.18
     fig = plt.figure(figsize=(13, 9))
-    plt.subplots_adjust(left=0, right=1, bottom=0.18, top=0.98)
+    plt.subplots_adjust(left=0, right=1, bottom=bottom, top=0.98)
     ax = fig.add_subplot(1, 1, 1, projection=proj)
     ax.set_extent(area, latlon_proj)
 
-    cn_ws = ax.contourf(lon, lat, ws_kt, levels_ws, cmap='YlOrRd', extend='max',
-                        alpha=0.65, transform=latlon_proj)
-    cn_ws_line = ax.contour(lon, lat, ws_kt, levels_ws, colors='blue', linewidths=1.5,
-                             transform=latlon_proj)
-    ax.clabel(cn_ws_line, fontsize=14, inline=True, colors='blue',
-              inline_spacing=5, fmt='%i', rightside_up=True)
+    if not no_isotac:
+        cn_ws = ax.contourf(lon, lat, ws_kt, levels_ws, cmap='YlOrRd', extend='max',
+                            alpha=0.65, transform=latlon_proj)
+        cn_ws_line = ax.contour(lon, lat, ws_kt, levels_ws, colors='blue', linewidths=1.5,
+                                transform=latlon_proj)
+        ax.clabel(cn_ws_line, fontsize=14, inline=True, colors='blue',
+                  inline_spacing=5, fmt='%i', rightside_up=True)
 
     cn_hgt = ax.contour(lon, lat, valHt, colors='black', linewidths=1.2, levels=levels_ht,
                         transform=latlon_proj)
@@ -443,13 +451,15 @@ def plot_ecm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_d
     gl.ylocator = mticker.FixedLocator(np.arange(-90, 90.1, 10))
 
     period_str = f"{init_times[-1].strftime('%Y%m%d%H')}〜{init_times[0].strftime('%Y%m%d%H')}UTC"
-    fig.text(0.5, 0.13,
-             f"ECM {n_days}day avg (FT=0h×{len(init_times)}) {period_str} "
-             f"{tagHp}hPa Height(m), ISOTAC(kt), Wind(kt)",
+    title_elems = f"{tagHp}hPa Height(m), Wind(kt)" if no_isotac else f"{tagHp}hPa Height(m), ISOTAC(kt), Wind(kt)"
+    title_y = 0.02 if no_isotac else 0.13
+    fig.text(0.5, title_y,
+             f"ECM {n_days}day avg (FT=0h×{len(init_times)}) {period_str} {title_elems}",
              ha='center', va='bottom', size=12)
 
-    cb_ax = fig.add_axes([0.1, 0.04, 0.8, 0.025])
-    fig.colorbar(cn_ws, cax=cb_ax, orientation='horizontal', label='Wind Speed (kt)')
+    if not no_isotac:
+        cb_ax = fig.add_axes([0.1, 0.04, 0.8, 0.025])
+        fig.colorbar(cn_ws, cax=cb_ax, orientation='horizontal', label='Wind Speed (kt)')
 
     os.makedirs(output_dir, exist_ok=True)
     out_fn = f"{output_dir}/{newest_dt_str2}_AVG{n_days}d_ECM_{tagHp}hPa_Height_Wind.png"
@@ -790,7 +800,7 @@ def main():
     for lev in levels:
         if run_gsm:
             print(f"--- GSM {lev}hPa 上層風 (時間平均) ---")
-            ok = plot_gsm_100hpa_avg(init_times, lev, output_dir, AREA_UPPER, newest_dt_str2, n_days)
+            ok = plot_gsm_100hpa_avg(init_times, lev, output_dir, AREA_UPPER, newest_dt_str2, n_days, no_isotac=args.no_isotac)
             if ok:
                 src = Path(output_dir) / f"{newest_dt_str2}_AVG{n_days}d_GSM_{lev}hPa_Height_Wind.png"
                 collected["upper_gsm"][lev] = copy_png(src, report_dir, f"GSM {lev}hPa 上層風")
@@ -800,7 +810,7 @@ def main():
 
         if run_ecm:
             print(f"--- ECM {lev}hPa 上層風 (時間平均) ---")
-            ok = plot_ecm_100hpa_avg(init_times, lev, output_dir, AREA_UPPER, newest_dt_str2, n_days)
+            ok = plot_ecm_100hpa_avg(init_times, lev, output_dir, AREA_UPPER, newest_dt_str2, n_days, no_isotac=args.no_isotac)
             if ok:
                 src = Path(output_dir) / f"{newest_dt_str2}_AVG{n_days}d_ECM_{lev}hPa_Height_Wind.png"
                 collected["upper_ecm"][lev] = copy_png(src, report_dir, f"ECM {lev}hPa 上層風")

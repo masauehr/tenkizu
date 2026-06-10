@@ -90,7 +90,14 @@ def parse_args():
   --area        84 156 17 55   東経84〜156°、北緯17〜55°
   --smooth-size 3              3×3格子平均スムージング（ECM 0.25°→約0.75°相当）
   --wind-step   12             風矢羽を12格子おき（約3度間隔）
-        """
+
+実行環境（conda の場合）:
+  conda activate met_env_310
+  python ECM_100hPa.py [引数]
+
+  ※ 環境名（met_env_310）は利用者の構築状況により異なります。
+     pygrib / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
+"""
     )
     parser.add_argument('init_time', type=str, help='初期時刻 YYYYMMDDHH（UTC）')
     parser.add_argument('start_ft',  type=int, nargs='?', default=0,   help='開始予報時間（時間数、デフォルト: 0）')
@@ -105,6 +112,8 @@ def parse_args():
                         help='uniform_filterのサイズ（デフォルト: 3）')
     parser.add_argument('--wind-step', type=int, default=12,
                         help='風矢羽の間引き格子数（デフォルト: 12）')
+    parser.add_argument('--no-isotac', action='store_true',
+                        help='ISOTACシェード・等風速線を非表示にし等高度線＋矢羽のみにする')
 
     # ? / -? / --? でヘルプ表示
     if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
@@ -114,7 +123,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=None, smooth_size=3, wind_step=12):
+def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=None, smooth_size=3, wind_step=12, no_isotac=False):
     if i_hourZ in (0, 12):
         ecm_fn = f"{i_year:04d}{i_month:02d}{i_day:02d}{i_hourZ:02d}0000-{ft_hours:d}h-oper-fc.grib2"
     else:
@@ -167,25 +176,22 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=
     proj        = ccrs.Stereographic(central_latitude=60, central_longitude=140)
     latlon_proj = ccrs.PlateCarree()
 
-    # 横長フィグ: 底部にタイトル行・カラーバー行を独立配置
+    bottom = 0.08 if no_isotac else 0.18
     fig = plt.figure(figsize=(13, 9))
-    plt.subplots_adjust(left=0, right=1, bottom=0.18, top=0.98)
+    plt.subplots_adjust(left=0, right=1, bottom=bottom, top=0.98)
     ax = fig.add_subplot(1, 1, 1, projection=proj)
     ax.set_extent(areaAry, latlon_proj)
 
-    # ISOTAC カラー塗り
-    cn_ws = ax.contourf(lon, lat, ws_kt,
-                        levels_ws, cmap='YlOrRd', extend='max',
-                        alpha=0.65, transform=latlon_proj)
+    if not no_isotac:
+        cn_ws = ax.contourf(lon, lat, ws_kt,
+                            levels_ws, cmap='YlOrRd', extend='max',
+                            alpha=0.65, transform=latlon_proj)
+        cn_ws_line = ax.contour(lon, lat, ws_kt,
+                                levels_ws, colors='blue', linewidths=1.5,
+                                transform=latlon_proj)
+        ax.clabel(cn_ws_line, fontsize=14, inline=True, colors='blue',
+                  inline_spacing=5, fmt='%i', rightside_up=True)
 
-    # ISOTAC 等風速線
-    cn_ws_line = ax.contour(lon, lat, ws_kt,
-                             levels_ws, colors='blue', linewidths=1.5,
-                             transform=latlon_proj)
-    ax.clabel(cn_ws_line, fontsize=14, inline=True, colors='blue',
-              inline_spacing=5, fmt='%i', rightside_up=True)
-
-    # 等高度線（黒線、上に重ねる）
     cn_hgt = ax.contour(lon, lat, valHt,
                         colors='black', linewidths=1.2, levels=levels_ht,
                         transform=latlon_proj)
@@ -208,15 +214,16 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=
     gl.xlocator = mticker.FixedLocator(xticks)
     gl.ylocator = mticker.FixedLocator(yticks)
 
-    # タイトル: 地図直下
-    fig.text(0.5, 0.13,
-             f"ECM FT{ft_hours:d}h IT:{dt_str} {tagHp}hPa Height(m), ISOTAC(kt), Wind(kt)",
+    title_elems = f"{tagHp}hPa Height(m), Wind(kt)" if no_isotac else f"{tagHp}hPa Height(m), ISOTAC(kt), Wind(kt)"
+    title_y = 0.02 if no_isotac else 0.13
+    fig.text(0.5, title_y,
+             f"ECM FT{ft_hours:d}h IT:{dt_str} {title_elems}",
              ha='center', va='bottom', size=15)
 
-    # カラーバー: タイトルの下
-    cb_ax = fig.add_axes([0.1, 0.04, 0.8, 0.025])
-    fig.colorbar(cn_ws, cax=cb_ax, orientation='horizontal',
-                 label='Wind Speed (kt)')
+    if not no_isotac:
+        cb_ax = fig.add_axes([0.1, 0.04, 0.8, 0.025])
+        fig.colorbar(cn_ws, cax=cb_ax, orientation='horizontal',
+                     label='Wind Speed (kt)')
 
     os.makedirs(output_dir, exist_ok=True)
     out_fn = f"{output_dir}/{dt_str2}_FT{ft_hours:03d}h_ECM_{tagHp}hPa_Height_Wind.png"
@@ -226,7 +233,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=
     return True
 
 
-def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, output_dir, area=None, smooth_size=3, wind_step=12):
+def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, output_dir, area=None, smooth_size=3, wind_step=12, no_isotac=False):
     """avg_steps個のFT（6h間隔）データを平均して1枚の天気図を生成する"""
     ft_list = [batch_start_h + i * 6 for i in range(avg_steps)]
     batch_end_h = ft_list[-1]
@@ -294,17 +301,19 @@ def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, o
     proj        = ccrs.Stereographic(central_latitude=60, central_longitude=140)
     latlon_proj = ccrs.PlateCarree()
 
+    bottom = 0.08 if no_isotac else 0.18
     fig = plt.figure(figsize=(13, 9))
-    plt.subplots_adjust(left=0, right=1, bottom=0.18, top=0.98)
+    plt.subplots_adjust(left=0, right=1, bottom=bottom, top=0.98)
     ax = fig.add_subplot(1, 1, 1, projection=proj)
     ax.set_extent(areaAry, latlon_proj)
 
-    cn_ws = ax.contourf(lon, lat, ws_kt, levels_ws, cmap='YlOrRd', extend='max',
-                        alpha=0.65, transform=latlon_proj)
-    cn_ws_line = ax.contour(lon, lat, ws_kt, levels_ws, colors='blue', linewidths=1.5,
-                             transform=latlon_proj)
-    ax.clabel(cn_ws_line, fontsize=14, inline=True, colors='blue',
-              inline_spacing=5, fmt='%i', rightside_up=True)
+    if not no_isotac:
+        cn_ws = ax.contourf(lon, lat, ws_kt, levels_ws, cmap='YlOrRd', extend='max',
+                            alpha=0.65, transform=latlon_proj)
+        cn_ws_line = ax.contour(lon, lat, ws_kt, levels_ws, colors='blue', linewidths=1.5,
+                                transform=latlon_proj)
+        ax.clabel(cn_ws_line, fontsize=14, inline=True, colors='blue',
+                  inline_spacing=5, fmt='%i', rightside_up=True)
 
     cn_hgt = ax.contour(lon, lat, valHt, colors='black', linewidths=1.2, levels=levels_ht,
                         transform=latlon_proj)
@@ -327,12 +336,15 @@ def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, o
     gl.ylocator = mticker.FixedLocator(yticks)
 
     avg_label = f"FT{batch_start_h:03d}-{batch_end_h:03d}h_avg{avg_steps}"
-    fig.text(0.5, 0.13,
-             f"ECM {avg_label} IT:{dt_str} {tagHp}hPa Height(m), ISOTAC(kt), Wind(kt)",
+    title_elems = f"{tagHp}hPa Height(m), Wind(kt)" if no_isotac else f"{tagHp}hPa Height(m), ISOTAC(kt), Wind(kt)"
+    title_y = 0.02 if no_isotac else 0.13
+    fig.text(0.5, title_y,
+             f"ECM {avg_label} IT:{dt_str} {title_elems}",
              ha='center', va='bottom', size=15)
 
-    cb_ax = fig.add_axes([0.1, 0.04, 0.8, 0.025])
-    fig.colorbar(cn_ws, cax=cb_ax, orientation='horizontal', label='Wind Speed (kt)')
+    if not no_isotac:
+        cb_ax = fig.add_axes([0.1, 0.04, 0.8, 0.025])
+        fig.colorbar(cn_ws, cax=cb_ax, orientation='horizontal', label='Wind Speed (kt)')
 
     os.makedirs(output_dir, exist_ok=True)
     out_fn = f"{output_dir}/{dt_str2}_{avg_label}_ECM_{tagHp}hPa_Height_Wind.png"
@@ -366,14 +378,14 @@ def main():
         for step_i in range(args.n_steps):
             batch_start_h = args.start_ft + step_i * (6 * args.avg_steps)
             if plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, args.avg_steps, args.level, "./output",
-                        area=args.area, smooth_size=args.smooth_size, wind_step=args.wind_step):
+                        area=args.area, smooth_size=args.smooth_size, wind_step=args.wind_step, no_isotac=args.no_isotac):
                 success += 1
         print(f"\n完了: {success}/{args.n_steps}枚 出力先: ./output/")
     else:
         success = 0
         for ft_h in ft_list:
             if plot_one(i_year, i_month, i_day, i_hourZ, ft_h, args.level, "./output",
-                        area=args.area, smooth_size=args.smooth_size, wind_step=args.wind_step):
+                        area=args.area, smooth_size=args.smooth_size, wind_step=args.wind_step, no_isotac=args.no_isotac):
                 success += 1
         print(f"\n完了: {success}/{args.n_steps}枚 出力先: ./output/")
 
