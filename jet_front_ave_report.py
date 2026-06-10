@@ -576,7 +576,7 @@ def plot_gsm_ept850_avg(init_times, output_dir, area, newest_dt_str2, n_days):
     ax.set_extent(area, latlon_proj)
 
     cnf_ept = ax.contourf(dsp['lon'], dsp['lat'], dsp['Equivalent_Potential_temperature'],
-                          levels_eptf, cmap="jet", extend='both', transform=latlon_proj)
+                          levels_eptf, cmap="jet", extend='both', alpha=0.7, transform=latlon_proj)
     ax_ept = fig.add_axes([0.1, 0.1, 0.8, 0.02])
     fig.colorbar(cnf_ept, orientation='horizontal', shrink=0.74, aspect=40, pad=0.01, cax=ax_ept)
 
@@ -718,7 +718,7 @@ def plot_ecm_ept850_avg(init_times, output_dir, area, newest_dt_str2, n_days):
     ax.set_extent(area, latlon_proj)
 
     cnf_ept = ax.contourf(dsp['lon'], dsp['lat'], dsp['Equivalent_Potential_temperature'],
-                          levels_eptf, cmap="jet", extend='both', transform=latlon_proj)
+                          levels_eptf, cmap="jet", extend='both', alpha=0.7, transform=latlon_proj)
     ax_ept = fig.add_axes([0.1, 0.1, 0.8, 0.02])
     fig.colorbar(cnf_ept, orientation='horizontal', shrink=0.74, aspect=40, pad=0.01, cax=ax_ept)
 

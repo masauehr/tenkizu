@@ -192,7 +192,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, tagHp, output_dir, area=N
 
     # EPTシェード
     cnf_ept = ax.contourf(dsp['lon'], dsp['lat'], dsp['Equivalent_Potential_temperature'],
-                          levels_eptf, cmap="jet", extend='both', transform=latlon_proj)
+                          levels_eptf, cmap="jet", extend='both', alpha=0.7, transform=latlon_proj)
     ax_ept = fig.add_axes([0.1, 0.1, 0.8, 0.02])
     fig.colorbar(cnf_ept, orientation='horizontal', shrink=0.74,
                  aspect=40, pad=0.01, cax=ax_ept)
@@ -334,7 +334,7 @@ def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, o
     ax.set_extent(i_area, latlon_proj)
 
     cnf_ept = ax.contourf(dsp['lon'], dsp['lat'], dsp['Equivalent_Potential_temperature'],
-                          levels_eptf, cmap="jet", extend='both', transform=latlon_proj)
+                          levels_eptf, cmap="jet", extend='both', alpha=0.7, transform=latlon_proj)
     ax_ept = fig.add_axes([0.1, 0.1, 0.8, 0.02])
     fig.colorbar(cnf_ept, orientation='horizontal', shrink=0.74,
                  aspect=40, pad=0.01, cax=ax_ept)
