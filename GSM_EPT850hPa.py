@@ -214,7 +214,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, tagHp, output_dir, area=N
     gl.ylocator = mticker.FixedLocator(yticks)
 
     # 風矢羽
-    wind_slice = (slice(None, None, 10), slice(None, None, 10))
+    wind_slice = (slice(None, None, 8), slice(None, None, 8))
     ax.barbs(dsp['lon'][wind_slice[0]], dsp['lat'][wind_slice[1]],
              dsp['u_wind'].values[wind_slice] * 1.944,
              dsp['v_wind'].values[wind_slice] * 1.944,
@@ -353,7 +353,7 @@ def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, o
     gl.xlocator = mticker.FixedLocator(xticks)
     gl.ylocator = mticker.FixedLocator(yticks)
 
-    wind_slice = (slice(None, None, 10), slice(None, None, 10))
+    wind_slice = (slice(None, None, 8), slice(None, None, 8))
     ax.barbs(dsp['lon'][wind_slice[0]], dsp['lat'][wind_slice[1]],
              dsp['u_wind'].values[wind_slice] * 1.944,
              dsp['v_wind'].values[wind_slice] * 1.944,

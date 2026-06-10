@@ -594,7 +594,7 @@ def plot_gsm_ept850_avg(init_times, output_dir, area, newest_dt_str2, n_days):
     gl.xlocator = mticker.FixedLocator(np.arange(0, 360, 10))
     gl.ylocator = mticker.FixedLocator(np.arange(-90, 90.1, 10))
 
-    wind_slice = (slice(None, None, 10), slice(None, None, 10))
+    wind_slice = (slice(None, None, 8), slice(None, None, 8))
     ax.barbs(dsp['lon'][wind_slice[0]], dsp['lat'][wind_slice[1]],
              dsp['u_wind'].values[wind_slice] * 1.944,
              dsp['v_wind'].values[wind_slice] * 1.944,
@@ -736,7 +736,7 @@ def plot_ecm_ept850_avg(init_times, output_dir, area, newest_dt_str2, n_days):
     gl.xlocator = mticker.FixedLocator(np.arange(0, 360, 10))
     gl.ylocator = mticker.FixedLocator(np.arange(-90, 90.1, 10))
 
-    wind_slice = (slice(None, None, 10), slice(None, None, 10))
+    wind_slice = (slice(None, None, 12), slice(None, None, 12))
     ax.barbs(dsp['lon'][wind_slice[0]], dsp['lat'][wind_slice[1]],
              dsp['u_wind'].values[wind_slice] * 1.944,
              dsp['v_wind'].values[wind_slice] * 1.944,
