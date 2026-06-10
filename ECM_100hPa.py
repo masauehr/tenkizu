@@ -182,6 +182,9 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=
     ax = fig.add_subplot(1, 1, 1, projection=proj)
     ax.set_extent(areaAry, latlon_proj)
 
+    ax.contourf(lon, lat, valHt, levels=levels_ht,
+                cmap='Blues', alpha=0.4, extend='both', transform=latlon_proj)
+
     if not no_isotac:
         cn_ws = ax.contourf(lon, lat, ws_kt,
                             levels_ws, cmap='YlOrRd', extend='max',
@@ -193,7 +196,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_hours, tagHp, output_dir, area=
                   inline_spacing=5, fmt='%i', rightside_up=True)
 
     cn_hgt = ax.contour(lon, lat, valHt,
-                        cmap='coolwarm', linewidths=1.2, levels=levels_ht,
+                        colors='black', linewidths=1.2, levels=levels_ht,
                         transform=latlon_proj)
     ax.clabel(cn_hgt, levels_ht[::2], fontsize=14, inline=True,
               inline_spacing=5, fmt='%i', rightside_up=True)
@@ -307,6 +310,9 @@ def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, o
     ax = fig.add_subplot(1, 1, 1, projection=proj)
     ax.set_extent(areaAry, latlon_proj)
 
+    ax.contourf(lon, lat, valHt, levels=levels_ht,
+                cmap='Blues', alpha=0.4, extend='both', transform=latlon_proj)
+
     if not no_isotac:
         cn_ws = ax.contourf(lon, lat, ws_kt, levels_ws, cmap='YlOrRd', extend='max',
                             alpha=0.65, transform=latlon_proj)
@@ -315,7 +321,7 @@ def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, o
         ax.clabel(cn_ws_line, fontsize=14, inline=True, colors='blue',
                   inline_spacing=5, fmt='%i', rightside_up=True)
 
-    cn_hgt = ax.contour(lon, lat, valHt, cmap='coolwarm', linewidths=1.2, levels=levels_ht,
+    cn_hgt = ax.contour(lon, lat, valHt, colors='black', linewidths=1.2, levels=levels_ht,
                         transform=latlon_proj)
     ax.clabel(cn_hgt, levels_ht[::2], fontsize=14, inline=True,
               inline_spacing=5, fmt='%i', rightside_up=True)

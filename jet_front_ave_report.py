@@ -313,6 +313,9 @@ def plot_gsm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_d
     ax = fig.add_subplot(1, 1, 1, projection=proj)
     ax.set_extent(area, latlon_proj)
 
+    ax.contourf(lon, lat, valHt, levels=levels_ht,
+                cmap='Blues', alpha=0.4, extend='both', transform=latlon_proj)
+
     if not no_isotac:
         cn_ws = ax.contourf(lon, lat, ws_kt, levels_ws, cmap='YlOrRd', extend='max',
                             alpha=0.65, transform=latlon_proj)
@@ -321,7 +324,7 @@ def plot_gsm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_d
         ax.clabel(cn_ws_line, fontsize=14, inline=True, colors='blue',
                   inline_spacing=5, fmt='%i', rightside_up=True)
 
-    cn_hgt = ax.contour(lon, lat, valHt, cmap='coolwarm', linewidths=1.2, levels=levels_ht,
+    cn_hgt = ax.contour(lon, lat, valHt, colors='black', linewidths=1.2, levels=levels_ht,
                         transform=latlon_proj)
     ax.clabel(cn_hgt, levels_ht[::2], fontsize=14, inline=True,
               inline_spacing=5, fmt='%i', rightside_up=True)
@@ -424,6 +427,9 @@ def plot_ecm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_d
     ax = fig.add_subplot(1, 1, 1, projection=proj)
     ax.set_extent(area, latlon_proj)
 
+    ax.contourf(lon, lat, valHt, levels=levels_ht,
+                cmap='Blues', alpha=0.4, extend='both', transform=latlon_proj)
+
     if not no_isotac:
         cn_ws = ax.contourf(lon, lat, ws_kt, levels_ws, cmap='YlOrRd', extend='max',
                             alpha=0.65, transform=latlon_proj)
@@ -432,7 +438,7 @@ def plot_ecm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_d
         ax.clabel(cn_ws_line, fontsize=14, inline=True, colors='blue',
                   inline_spacing=5, fmt='%i', rightside_up=True)
 
-    cn_hgt = ax.contour(lon, lat, valHt, cmap='coolwarm', linewidths=1.2, levels=levels_ht,
+    cn_hgt = ax.contour(lon, lat, valHt, colors='black', linewidths=1.2, levels=levels_ht,
                         transform=latlon_proj)
     ax.clabel(cn_hgt, levels_ht[::2], fontsize=14, inline=True,
               inline_spacing=5, fmt='%i', rightside_up=True)
