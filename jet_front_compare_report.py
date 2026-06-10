@@ -34,11 +34,14 @@ def parse_args():
   python jet_front_compare_report.py 2026050600 2026050512
   python jet_front_compare_report.py 2026050600 2026050512 2026050500
   python jet_front_compare_report.py 2026050600 2026050512 --ave-only
-  python jet_front_compare_report.py 2026050600 2026050512 --wide-only
+  python jet_front_compare_report.py 2026050600 2026050512 --levels 100 200
+  python jet_front_compare_report.py 2026050600 2026050512 --ecm --push
         """)
     parser.add_argument("init_times", nargs="+", help="初期時刻（YYYYMMDDHH）2～3個")
     parser.add_argument("--ave-only", action="store_true", help="AVEレポートのみ")
     parser.add_argument("--wide-only", action="store_true", help="WIDEレポートのみ")
+    parser.add_argument("--levels", nargs="+", type=int, default=[50, 100, 200],
+                        help="上層気圧面（hPa）デフォルト: 50 100 200")
     parser.add_argument("--ecm", action="store_true", help="ECMWFも実行")
     parser.add_argument("--push", action="store_true", help="GitHub push する")
 
@@ -72,6 +75,8 @@ def find_images_in_report(report_dir, prefix, report_type="ave"):
 
     AVE: {YYYYMMDDHH}_AVG{n}d_GSM_{level}hPa_*
     WIDE: {YYYYMMDDHH}_FT*_GSM_{level}hPa_*
+
+    複数バージョンがある場合は最短期間を優先
     """
     if not report_dir.exists():
         return {}
@@ -79,44 +84,72 @@ def find_images_in_report(report_dir, prefix, report_type="ave"):
     images = {}
     png_files = list(report_dir.glob("*.png"))
 
-    # 初回（または単一）のファイルを優先するため、FT/AVG の値で分類
     if report_type == "ave":
-        # AVE型: 複数解像度がある場合は最初のFTを選択
-        for png_file in sorted(png_files):
+        # AVE型: 複数ある場合は _AVG1d_ → _AVG2d_ ... の順で優先
+        candidates = {
+            "upper_50": [],
+            "upper_100": [],
+            "upper_200": [],
+            "upper_300": [],
+            "ept850": []
+        }
+
+        for png_file in png_files:
             name = png_file.name
-            if "300hPa" in name and "upper_300" not in images:
-                images["upper_300"] = name
-            elif "200hPa" in name and "upper_200" not in images:
-                images["upper_200"] = name
-            elif "100hPa" in name and "Height_Wind" in name and "upper_100" not in images:
-                images["upper_100"] = name
-            elif "50hPa" in name and "upper_50" not in images:
-                images["upper_50"] = name
-            elif "850hPa_EPT" in name and "ept850" not in images:
-                images["ept850"] = name
+            if "300hPa" in name and "Height_Wind" in name:
+                candidates["upper_300"].append(name)
+            elif "200hPa" in name and "Height_Wind" in name:
+                candidates["upper_200"].append(name)
+            elif "100hPa" in name and "Height_Wind" in name:
+                candidates["upper_100"].append(name)
+            elif "50hPa" in name and "Height_Wind" in name:
+                candidates["upper_50"].append(name)
+            elif "850hPa_EPT" in name:
+                candidates["ept850"].append(name)
+
+        # 各キーについて、最短期間（1d, 2d, ... の順）を選択
+        for key, names in candidates.items():
+            if names:
+                # _AVGnd_ の n が最小のものを選択
+                sorted_names = sorted(names, key=lambda x: int(x.split("_AVG")[1].split("d_")[0]) if "_AVG" in x else 999)
+                images[key] = sorted_names[0]
+
     else:
         # WIDE型: 複数ある場合は最初（FT=0からの範囲が短い）のものを選択
-        for png_file in sorted(png_files):
+        candidates = {
+            "upper_50": [],
+            "upper_100": [],
+            "upper_200": [],
+            "upper_300": [],
+            "ept850": []
+        }
+
+        for png_file in png_files:
             name = png_file.name
             if "_avg2_" not in name:  # avg2=FT000-006h を優先
                 continue
 
-            if "300hPa" in name and "upper_300" not in images:
-                images["upper_300"] = name
-            elif "200hPa" in name and "upper_200" not in images:
-                images["upper_200"] = name
-            elif "100hPa" in name and "Height_Wind" in name and "upper_100" not in images:
-                images["upper_100"] = name
-            elif "50hPa" in name and "upper_50" not in images:
-                images["upper_50"] = name
-            elif "850hPa_EPT" in name and "ept850" not in images:
-                images["ept850"] = name
+            if "300hPa" in name and "Height_Wind" in name:
+                candidates["upper_300"].append(name)
+            elif "200hPa" in name and "Height_Wind" in name:
+                candidates["upper_200"].append(name)
+            elif "100hPa" in name and "Height_Wind" in name:
+                candidates["upper_100"].append(name)
+            elif "50hPa" in name and "Height_Wind" in name:
+                candidates["upper_50"].append(name)
+            elif "850hPa_EPT" in name:
+                candidates["ept850"].append(name)
+
+        # 最初のものを選択
+        for key, names in candidates.items():
+            if names:
+                images[key] = names[0]
 
     return images
 
 
-def build_comparison_md(init_times, report_types, ecm_flag):
-    """比較用MDファイルを構築"""
+def build_comparison_md(init_times, report_types, levels, ecm_flag):
+    """比較用MDファイルを構築（横に並べたレイアウト）"""
     lines = []
 
     # タイトル
@@ -134,15 +167,20 @@ def build_comparison_md(init_times, report_types, ecm_flag):
         lines.append("")
 
         # 上層風
-        lines.append("### 上層風（300hPa + 200hPa + 100hPa）")
+        lines.append(f"### 上層風（{', '.join([f'{lev}hPa' for lev in levels])}）")
         lines.append("")
 
-        for lev in [300, 200, 100]:
+        for lev in levels:
             lines.append(f"#### {lev}hPa")
             lines.append("")
-            lines.append(f"| 初期時刻 | 画像 |")
-            lines.append("|---------|------|")
 
+            # 初期時刻をヘッダーに
+            header = "| " + " | ".join([format_datetime(it) for it in init_times]) + " |"
+            lines.append(header)
+            lines.append("|" + "|".join(["---"] * len(init_times)) + "|")
+
+            # 画像を1行に並べる
+            row_cells = []
             for init_time in init_times:
                 report_dir = _SCRIPT_DIR / "reports" / f"{init_time}-ave"
                 images = find_images_in_report(report_dir, init_time, report_type="ave")
@@ -151,19 +189,22 @@ def build_comparison_md(init_times, report_types, ecm_flag):
                 if key in images:
                     img_name = images[key]
                     rel_path = f"../{init_time}-ave/{img_name}"
-                    dt_fmt = format_datetime(init_time)
-                    lines.append(f"| {dt_fmt} | ![{lev}hPa]({rel_path}) |")
+                    row_cells.append(f"![{lev}hPa]({rel_path})")
                 else:
-                    lines.append(f"| {format_datetime(init_time)} | （画像なし） |")
+                    row_cells.append("（画像なし）")
 
+            lines.append("| " + " | ".join(row_cells) + " |")
             lines.append("")
 
         # 850hPa相当温位
-        lines.append("### 850hPa 相当温位・風矢羽")
+        lines.append("#### 850hPa 相当温位・風矢羽")
         lines.append("")
-        lines.append("| 初期時刻 | 画像 |")
-        lines.append("|---------|------|")
 
+        header = "| " + " | ".join([format_datetime(it) for it in init_times]) + " |"
+        lines.append(header)
+        lines.append("|" + "|".join(["---"] * len(init_times)) + "|")
+
+        row_cells = []
         for init_time in init_times:
             report_dir = _SCRIPT_DIR / "reports" / f"{init_time}-ave"
             images = find_images_in_report(report_dir, init_time, report_type="ave")
@@ -171,10 +212,11 @@ def build_comparison_md(init_times, report_types, ecm_flag):
             if "ept850" in images:
                 img_name = images["ept850"]
                 rel_path = f"../{init_time}-ave/{img_name}"
-                lines.append(f"| {format_datetime(init_time)} | ![EPT850]({rel_path}) |")
+                row_cells.append(f"![EPT850]({rel_path})")
             else:
-                lines.append(f"| {format_datetime(init_time)} | （画像なし） |")
+                row_cells.append("（画像なし）")
 
+        lines.append("| " + " | ".join(row_cells) + " |")
         lines.append("")
         lines.append("---")
         lines.append("")
@@ -185,30 +227,42 @@ def build_comparison_md(init_times, report_types, ecm_flag):
         lines.append("")
 
         # 上層風
-        lines.append("### 上層風（100hPa）")
+        lines.append(f"### 上層風（{', '.join([f'{lev}hPa' for lev in levels])}）")
         lines.append("")
-        lines.append("| 初期時刻 | 画像 |")
-        lines.append("|---------|------|")
 
-        for init_time in init_times:
-            report_dir = _SCRIPT_DIR / "reports" / f"{init_time}-wide"
-            images = find_images_in_report(report_dir, init_time, report_type="wide")
+        for lev in levels:
+            lines.append(f"#### {lev}hPa")
+            lines.append("")
 
-            if "upper_100" in images:
-                img_name = images["upper_100"]
-                rel_path = f"../{init_time}-wide/{img_name}"
-                lines.append(f"| {format_datetime(init_time)} | ![100hPa]({rel_path}) |")
-            else:
-                lines.append(f"| {format_datetime(init_time)} | （画像なし） |")
+            header = "| " + " | ".join([format_datetime(it) for it in init_times]) + " |"
+            lines.append(header)
+            lines.append("|" + "|".join(["---"] * len(init_times)) + "|")
 
-        lines.append("")
+            row_cells = []
+            for init_time in init_times:
+                report_dir = _SCRIPT_DIR / "reports" / f"{init_time}-wide"
+                images = find_images_in_report(report_dir, init_time, report_type="wide")
+
+                key = f"upper_{lev}"
+                if key in images:
+                    img_name = images[key]
+                    rel_path = f"../{init_time}-wide/{img_name}"
+                    row_cells.append(f"![{lev}hPa]({rel_path})")
+                else:
+                    row_cells.append("（画像なし）")
+
+            lines.append("| " + " | ".join(row_cells) + " |")
+            lines.append("")
 
         # 850hPa相当温位
-        lines.append("### 850hPa 相当温位・風矢羽")
+        lines.append("#### 850hPa 相当温位・風矢羽")
         lines.append("")
-        lines.append("| 初期時刻 | 画像 |")
-        lines.append("|---------|------|")
 
+        header = "| " + " | ".join([format_datetime(it) for it in init_times]) + " |"
+        lines.append(header)
+        lines.append("|" + "|".join(["---"] * len(init_times)) + "|")
+
+        row_cells = []
         for init_time in init_times:
             report_dir = _SCRIPT_DIR / "reports" / f"{init_time}-wide"
             images = find_images_in_report(report_dir, init_time, report_type="wide")
@@ -216,10 +270,11 @@ def build_comparison_md(init_times, report_types, ecm_flag):
             if "ept850" in images:
                 img_name = images["ept850"]
                 rel_path = f"../{init_time}-wide/{img_name}"
-                lines.append(f"| {format_datetime(init_time)} | ![EPT850]({rel_path}) |")
+                row_cells.append(f"![EPT850]({rel_path})")
             else:
-                lines.append(f"| {format_datetime(init_time)} | （画像なし） |")
+                row_cells.append("（画像なし）")
 
+        lines.append("| " + " | ".join(row_cells) + " |")
         lines.append("")
         lines.append("---")
         lines.append("")
@@ -241,6 +296,8 @@ def main():
                            初期時刻（YYYYMMDDHH）2～3個を指定
 
 オプション:
+  --levels LEVEL [LEVEL...]
+                         上層気圧面（hPa）デフォルト: 50 100 200
   --ave-only             AVEレポートのみを生成
   --wide-only            WIDEレポートのみを生成
   --ecm                  ECMWF (ECM) も実行（デフォルト: GSMのみ）
@@ -248,10 +305,13 @@ def main():
 
 使用例:
   python jet_front_compare_report.py 2026050600 2026050512
-    → 2初期時刻の AVE+WIDE 比較レポートを生成
+    → 2初期時刻の AVE+WIDE 比較レポート（50/100/200hPa）
 
   python jet_front_compare_report.py 2026050600 2026050512 2026050500
-    → 3初期時刻の AVE+WIDE 比較レポートを生成
+    → 3初期時刻の AVE+WIDE 比較レポート（50/100/200hPa）
+
+  python jet_front_compare_report.py 2026050600 2026050512 --levels 100 200
+    → 100/200hPa のみ比較
 
   python jet_front_compare_report.py 2026050600 2026050512 --ave-only
     → AVEレポートのみ比較
@@ -261,6 +321,10 @@ def main():
 
 出力:
   reports/compare_INIT_TIME1_INIT_TIME2[_INIT_TIME3]/compare_report.md
+
+特徴:
+  ・比較画像は横に並べたテーブル形式で表示
+  ・ファイルがない場合は自動的に各レポートを生成
         """)
         sys.exit(0)
 
@@ -296,32 +360,41 @@ def main():
     print(f"{'='*60}")
     print(f"\n初期時刻: {', '.join(init_times)}")
     print(f"レポートタイプ: {', '.join(report_types)}")
+    print(f"上層気圧面: {', '.join([f'{lev}hPa' for lev in args.levels])}")
     if args.ecm:
         print(f"ECMWF: 対応")
     print()
 
-    # ---- 各レポートスクリプトを実行 ----
+    # ---- 各レポートスクリプトを実行（ファイルがない場合） ----
     for init_time in init_times:
         print(f"\n{'─'*60}")
         print(f" {format_datetime(init_time)}")
         print(f"{'─'*60}")
 
         if "ave" in report_types:
-            print("\n[1/2] AVE報告を生成中...")
-            if not run_report_script("jet_front_ave_report.py", init_time, n_days=1, ecm_flag=ecm_flag):
-                print(f"警告: AVE報告の生成に失敗 ({init_time})")
+            report_dir = _SCRIPT_DIR / "reports" / f"{init_time}-ave"
+            if not report_dir.exists() or not list(report_dir.glob("*.png")):
+                print("\n[1/2] AVE報告を生成中（ファイルなし）...")
+                if not run_report_script("jet_front_ave_report.py", init_time, n_days=1, ecm_flag=ecm_flag):
+                    print(f"警告: AVE報告の生成に失敗 ({init_time})")
+            else:
+                print("[1/2] AVE報告: 既存ファイルを使用")
 
         if "wide" in report_types:
-            print("\n[2/2] WIDE報告を生成中...")
-            if not run_report_script("jet_front_wide_report.py", init_time, ecm_flag=ecm_flag):
-                print(f"警告: WIDE報告の生成に失敗 ({init_time})")
+            report_dir = _SCRIPT_DIR / "reports" / f"{init_time}-wide"
+            if not report_dir.exists() or not list(report_dir.glob("*.png")):
+                print("\n[2/2] WIDE報告を生成中（ファイルなし）...")
+                if not run_report_script("jet_front_wide_report.py", init_time, ecm_flag=ecm_flag):
+                    print(f"警告: WIDE報告の生成に失敗 ({init_time})")
+            else:
+                print("[2/2] WIDE報告: 既存ファイルを使用")
 
     # ---- 比較MDファイルを生成 ----
     print(f"\n{'='*60}")
     print(f" 比較レポートを生成中...")
     print(f"{'='*60}\n")
 
-    md_content = build_comparison_md(init_times, report_types, ecm_flag)
+    md_content = build_comparison_md(init_times, report_types, args.levels, ecm_flag)
 
     # 出力ディレクトリ
     init_str = "_".join(init_times)
