@@ -87,16 +87,18 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 使用例:
-  python ECM_100hPa.py 2026041200 0 1               # FT=0h 1枚
-  python ECM_100hPa.py 2026041200 0 5               # FT=0,6,12,18,24h 5枚
-  python ECM_100hPa.py 2026041200 24 3              # FT=24,30,36h 3枚
-  python ECM_100hPa.py 2026041200 0 1 --smooth-size 5  # スムージング5×5
-  python ECM_100hPa.py 2026041200 0 1 --wind-step 8    # 風矢羽8格子おき
+  python ECM_100hPa.py 2026041200 0 1                    # FT=0h 1枚
+  python ECM_100hPa.py 2026041200 0 5                    # FT=0,6,12,18,24h 5枚
+  python ECM_100hPa.py 2026041200 24 3                   # FT=24,30,36h 3枚
+  python ECM_100hPa.py 2026041200 0 1 --smooth-size 5    # スムージング5×5
+  python ECM_100hPa.py 2026041200 0 1 --wind-step 8      # 風矢羽8格子おき
+  python ECM_100hPa.py 2026041200 0 1 --no-isotac        # ISOTACなし（高度コンター+矢羽のみ）
 
 デフォルト描画設定:
   --area        84 156 17 55   東経84〜156°、北緯17〜55°
   --smooth-size 3              3×3格子平均スムージング（ECM 0.25°→約0.75°相当）
   --wind-step   12             風矢羽を12格子おき（約3度間隔）
+  --no-isotac                  指定なし（デフォルト: ISOTACあり）
 
 実行環境（conda の場合）:
   conda activate met_env_310

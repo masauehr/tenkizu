@@ -81,9 +81,16 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 使用例:
-  python GSM_EPT850hPa.py 2026041200           # FT=0h 1枚
-  python GSM_EPT850hPa.py 2026041200 0000 5   # FT=0,6,12,18,24h 5枚
-  python GSM_EPT850hPa.py 2026041200 0012 1   # FT=12h 1枚
+  python GSM_EPT850hPa.py 2026041200                              # FT=0h 1枚
+  python GSM_EPT850hPa.py 2026041200 0000 5                      # FT=0,6,12,18,24h 5枚
+  python GSM_EPT850hPa.py 2026041200 0012 1                      # FT=12h 1枚
+  python GSM_EPT850hPa.py 2026041200 0000 1 --smooth-size 3      # スムージング3×3格子
+  python GSM_EPT850hPa.py 2026041200 0000 1 --wind-step 8        # 風矢羽8格子おき
+
+デフォルト描画設定:
+  --area        115 151 20 50  東経115〜151°、北緯20〜50°
+  --smooth-size 1              スムージングなし（1=なし）
+  --wind-step   5              風矢羽を5格子おき
 
 実行環境（conda の場合）:
   conda activate met_env_310

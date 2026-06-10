@@ -84,9 +84,15 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 使用例:
-  python GSM_100hPa.py 2021100100 0000 1   # FT=0h 1枚
-  python GSM_100hPa.py 2021100100 0000 5   # FT0h〜FT24h 5枚
-  python GSM_100hPa.py 2021100100 0100 3   # FT24h〜FT36h 3枚
+  python GSM_100hPa.py 2021100100 0000 1                    # FT=0h 1枚
+  python GSM_100hPa.py 2021100100 0000 5                    # FT0h〜FT24h 5枚
+  python GSM_100hPa.py 2021100100 0100 3                    # FT24h〜FT36h 3枚
+  python GSM_100hPa.py 2021100100 0000 1 --no-isotac        # ISOTACなし（高度コンター+矢羽のみ）
+  python GSM_100hPa.py 2021100100 0000 5 300 --no-isotac    # 300hPa ISOTAC非表示
+
+デフォルト描画設定:
+  --area        84 156 17 55   東経84〜156°、北緯17〜55°
+  --no-isotac                  指定なし（デフォルト: ISOTACあり）
 
 実行環境（conda の場合）:
   conda activate met_env_310
