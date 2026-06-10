@@ -107,11 +107,11 @@ def find_images_in_report(report_dir, prefix, report_type="ave"):
             elif "850hPa_EPT" in name:
                 candidates["ept850"].append(name)
 
-        # 各キーについて、最短期間（1d, 2d, ... の順）を選択
+        # 各キーについて、最長期間（5d, 4d, ... 1d の順）を選択
         for key, names in candidates.items():
             if names:
-                # _AVGnd_ の n が最小のものを選択
-                sorted_names = sorted(names, key=lambda x: int(x.split("_AVG")[1].split("d_")[0]) if "_AVG" in x else 999)
+                # _AVGnd_ の n が最大のものを選択
+                sorted_names = sorted(names, key=lambda x: int(x.split("_AVG")[1].split("d_")[0]) if "_AVG" in x else 0, reverse=True)
                 images[key] = sorted_names[0]
 
     else:
