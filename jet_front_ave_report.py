@@ -299,9 +299,9 @@ def plot_gsm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_d
     v_kt  = valWv * 1.94384
     ws_kt = np.sqrt(u_kt**2 + v_kt**2)
 
-    min_hgt   = int(valHt.min() / 120) * 120
-    max_hgt   = int(valHt.max() / 120 + 1) * 120
-    levels_ht = np.arange(min_hgt, max_hgt + 120, 120)
+    min_hgt   = int(valHt.min() / 60) * 60
+    max_hgt   = int(valHt.max() / 60 + 1) * 60
+    levels_ht = np.arange(min_hgt, max_hgt + 60, 60)
     levels_ws = np.arange(20, 130, 20)
 
     proj        = ccrs.Stereographic(central_latitude=60, central_longitude=140)
@@ -321,7 +321,7 @@ def plot_gsm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_d
         ax.clabel(cn_ws_line, fontsize=14, inline=True, colors='blue',
                   inline_spacing=5, fmt='%i', rightside_up=True)
 
-    cn_hgt = ax.contour(lon, lat, valHt, colors='black', linewidths=1.2, levels=levels_ht,
+    cn_hgt = ax.contour(lon, lat, valHt, cmap='coolwarm', linewidths=1.2, levels=levels_ht,
                         transform=latlon_proj)
     ax.clabel(cn_hgt, levels_ht[::2], fontsize=14, inline=True,
               inline_spacing=5, fmt='%i', rightside_up=True)
@@ -410,9 +410,9 @@ def plot_ecm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_d
     v_kt  = valWv * 1.94384
     ws_kt = np.sqrt(u_kt**2 + v_kt**2)
 
-    min_hgt   = int(valHt.min() / 120) * 120
-    max_hgt   = int(valHt.max() / 120 + 1) * 120
-    levels_ht = np.arange(min_hgt, max_hgt + 120, 120)
+    min_hgt   = int(valHt.min() / 60) * 60
+    max_hgt   = int(valHt.max() / 60 + 1) * 60
+    levels_ht = np.arange(min_hgt, max_hgt + 60, 60)
     levels_ws = np.arange(20, 130, 20)
 
     proj        = ccrs.Stereographic(central_latitude=60, central_longitude=140)
@@ -432,7 +432,7 @@ def plot_ecm_100hpa_avg(init_times, tagHp, output_dir, area, newest_dt_str2, n_d
         ax.clabel(cn_ws_line, fontsize=14, inline=True, colors='blue',
                   inline_spacing=5, fmt='%i', rightside_up=True)
 
-    cn_hgt = ax.contour(lon, lat, valHt, colors='black', linewidths=1.2, levels=levels_ht,
+    cn_hgt = ax.contour(lon, lat, valHt, cmap='coolwarm', linewidths=1.2, levels=levels_ht,
                         transform=latlon_proj)
     ax.clabel(cn_hgt, levels_ht[::2], fontsize=14, inline=True,
               inline_spacing=5, fmt='%i', rightside_up=True)

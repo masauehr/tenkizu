@@ -146,9 +146,9 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, tagHp, output_dir, area=N
     dt_str2 = dt_i.strftime("%Y%m%d%H")
 
     # 等高度線レベル（120m間隔）
-    min_hgt   = int(valHt.min() / 120) * 120
-    max_hgt   = int(valHt.max() / 120 + 1) * 120
-    levels_ht = np.arange(min_hgt, max_hgt + 120, 120)
+    min_hgt   = int(valHt.min() / 60) * 60
+    max_hgt   = int(valHt.max() / 60 + 1) * 60
+    levels_ht = np.arange(min_hgt, max_hgt + 60, 60)
 
     # 等風速線レベル（20kt間隔）
     levels_ws = np.arange(20, 130, 20)
@@ -174,7 +174,7 @@ def plot_one(i_year, i_month, i_day, i_hourZ, ft_ddhh, tagHp, output_dir, area=N
                   inline_spacing=5, fmt='%i', rightside_up=True)
 
     cn_hgt = ax.contour(lon, lat, valHt,
-                        colors='black', linewidths=1.2, levels=levels_ht,
+                        cmap='coolwarm', linewidths=1.2, levels=levels_ht,
                         transform=latlon_proj)
     ax.clabel(cn_hgt, levels_ht[::2], fontsize=14, inline=True,
               inline_spacing=5, fmt='%i', rightside_up=True)
@@ -267,9 +267,9 @@ def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, o
     v_kt  = valWv * 1.94384
     ws_kt = np.sqrt(u_kt**2 + v_kt**2)
 
-    min_hgt   = int(valHt.min() / 120) * 120
-    max_hgt   = int(valHt.max() / 120 + 1) * 120
-    levels_ht = np.arange(min_hgt, max_hgt + 120, 120)
+    min_hgt   = int(valHt.min() / 60) * 60
+    max_hgt   = int(valHt.max() / 60 + 1) * 60
+    levels_ht = np.arange(min_hgt, max_hgt + 60, 60)
     levels_ws = np.arange(20, 130, 20)
 
     areaAry     = area if area is not None else [84, 156, 17, 55]
@@ -290,7 +290,7 @@ def plot_avg(i_year, i_month, i_day, i_hourZ, batch_start_h, avg_steps, tagHp, o
         ax.clabel(cn_ws_line, fontsize=14, inline=True, colors='blue',
                   inline_spacing=5, fmt='%i', rightside_up=True)
 
-    cn_hgt = ax.contour(lon, lat, valHt, colors='black', linewidths=1.2, levels=levels_ht,
+    cn_hgt = ax.contour(lon, lat, valHt, cmap='coolwarm', linewidths=1.2, levels=levels_ht,
                         transform=latlon_proj)
     ax.clabel(cn_hgt, levels_ht[::2], fontsize=14, inline=True,
               inline_spacing=5, fmt='%i', rightside_up=True)
