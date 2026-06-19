@@ -6,7 +6,9 @@ jra55_config.ini
 
 data_gsm/
 data/ecm/
+data/gfs/
 data/Jra55/
+data/ncep_climo/
 output/
 .cache/
 .matplotlib/

@@ -3,9 +3,9 @@
 ## 概要
 
 黒良さんのNote をベースに整備した天気図作成ツール。  
-GSM（全球モデル）および ECMWF GRIB2 データをダウンロードし、  
-各種高層・地上天気図を PNG 出力する。GSM/ECMWF 合計 16 種類の描画スクリプトと  
-一括生成スクリプト・PowerPoint 自動生成スクリプト・レポート生成スクリプト5本・エマグラム描画スクリプト1本を収録。
+GSM（全球モデル）・ECMWF・GFS・AIFS の GRIB2 データをダウンロードし、  
+各種高層・地上・極座標天気図を PNG 出力する。GSM/ECMWF/GFS/AIFS 合計 20 種類の描画スクリプトと  
+一括生成スクリプト・PowerPoint 自動生成スクリプト・レポート生成スクリプト・エマグラム描画スクリプト等を収録。
 
 **プロジェクトパス**: `/Users/masahiro/projects/tenkizu/`  
 **GitHubリポジトリ**: `https://github.com/masauehr/tenkizu`  
@@ -35,20 +35,25 @@ GSM（全球モデル）および ECMWF GRIB2 データをダウンロードし�
 | `ECM_SurfacePressure.py` | ECM | 地上気圧・10m 風・2m 気温（±TCWV/TP） | `*_ECM_SurfacePressure.png` |
 | `GSM_100hPa.py` | GSM | 100hPa（または任意気圧面）等高度線・ISOTAC・風矢羽 | `*_GSM_{lev}hPa_Height_Wind.png` |
 | `ECM_100hPa.py` | ECM | 100hPa（または任意気圧面）等高度線・ISOTAC・風矢羽 | `*_ECM_{lev}hPa_Height_Wind.png` |
+| `GFS_SurfacePressure.py` | GFS | 地上気圧・10m 風・2m 気温（NOMADS filter DL） | `*_GFS_SurfacePressure.png` |
+| `GSM_PolarView.py` | GSM | 北半球極座標天気図（等高度線・風速/偏差シェード） | `*_GSM_{lev}hPa_PolarView.png` |
+| `AIFS_SurfacePressure.py` | AIFS | 地上気圧・10m 風・2m 気温（AIFS-single DL、00z/12z のみ） | `*_AIFS_SurfacePressure.png` |
+| `AIFS_ENS_SurfacePressure.py` | AIFS-ENS | 地上気圧・10m 風・2m 気温（AIFS-ENS cf DL、全初期時刻対応、~85MB/FT） | `*_AIFS_ENS_SurfacePressure.png` |
 
 ### その他スクリプト
 
 | ファイル | 役割 |
 |--------|------|
 | `run_gsm_auto.py` | **GSM系: 最新データ自動検索・全9スクリプト一括実行** |
-| `run_ecm_auto.py` | **ECM系: 最新データ自動検索・全5スクリプト一括実行** |
+| `run_ecm_auto.py` | **ECM/AIFS系: 最新データ自動検索・全ECMスクリプト一括実行。`--aifs` でAIFSも生成、`--aifs-only` でAIFSのみ実行** |
 | `run_all_charts.sh` | 全16スクリプトを一括実行（init_time手動指定）。デフォルトはGSMのみ、`--ecm` でECM追加 |
 | `jet_front_report.py` | 上層風・鉛直断面・850hPa相当温位・地上気圧のジェット・前線解析レポートを生成。`--push` で GitHub push |
 | `jet_front_wide_report.py` | 上層風・850hPa相当温位のみの広域版レポートを生成。描画領域を拡大した「ジェット・前線解析（広域）」を `reports/{init_str}-wide/` に出力。`--avg_steps N` で予報時間軸の平均天気図に対応 |
 | `jet_front_ave_report.py` | 複数初期時刻（12h間隔で遡る）のFT=0h解析値を平均した天気図を生成。梅雨入り等の平均場把握に有効。出力先: `reports/{init_str}-ave/` |
 | `upper_wind_report.py` | 指定気圧面の上層天気図を生成し `reports/` に MD+PNG をまとめる。`--push` で GitHub push |
 | `synop_report.py` | 総観天気図（Jet300hPa・Fax57・Fax78・EPT850hPa・地上気圧）のレポートを生成。`--ecm` 指定時はGSM/ECMを横並びテーブルで比較表示。FT見出しにJST時刻付き。`--charts` で種別指定、`--push` で GitHub push |
-| `ECM_GSM_SurfacePressure.py` | GSM・ECMWF の地上気圧天気図を横並び比較する Markdown レポートを生成。`--gsm`/`--ecm` で片モデルのみ実行可。`--push` で GitHub push |
+| `typhoon-multi.py` | GSM・ECMWF・GFS・AIFS・AIFS-ENS（最大5モデル）の地上気圧天気図を横並び比較する Markdown レポートを生成。モデル選択フラグで組み合わせ指定可、`--area` で描画範囲指定。`--push` で GitHub push |
+| `make_ncep_climo.py` | NOAA PSL から NCEP/NCAR LTM 月別平年値（hgt/uwnd/vwnd）を取得。`GSM_PolarView.py --climo` の偏差シェードに使用。3ファイル計 ~25 MB |
 | `emagram.py` | **エマグラム・温位エマグラム描画**。Wyoming高層ゾンデデータを取得し、エマグラム（CAPE/CIN・ホドグラフ付き）と温位エマグラム（θ/θe/θes/θw）をPNG出力。`--report` でMarkdownレポート生成、`--push` でGitHub push |
 | `GRIB2_Emagram.py` | GSM/ECMWFのGRIB2から任意緯度・経度の格子点エマグラム・温位エマグラムを作図。`--start-ft`/`--steps`/`--interval` で複数FTを連続作図。`--push` でGitHub push |
 | `JRA55_Emagram.py` | JRA-55 NetCDFから任意緯度・経度の格子点エマグラム・温位エマグラムを作図。`--push` でGitHub push |
@@ -61,6 +66,9 @@ GSM（全球モデル）および ECMWF GRIB2 データをダウンロードし�
 | `reports/` | レポート保存先（`reports/{init_str}/{スクリプト名}_{FTラベル}.md`） |
 | `data_gsm/` | GSM GRIB2 データ格納ディレクトリ（Git 除外） |
 | `data/ecm/` | ECMWF GRIB2 データ格納ディレクトリ（Git 除外） |
+| `data/gfs/` | GFS GRIB2 データ格納ディレクトリ（Git 除外）。ファイル名: `gfs_{YYYYMMDDHH}_f{FFF:03d}_srf.grib2` |
+| `data/aifs/` | AIFS-single GRIB2 データ（Git 除外）。URL: `aifs-single/0p25/oper/`、00z/12z のみ |
+| `data/aifs-ens/` | AIFS-ENS cf データ（Git 除外）。URL: `aifs-ens/0p25/enfo/`、全初期時刻・~85MB/FT |
 | `output/` | PNG 出力先（Git 除外） |
 
 ---
@@ -260,7 +268,7 @@ python jet_front_report.py 2026041200 0000 5 --push                 # 生成後 
 | `GSM_EPT850hPa.py` / `ECM_EPT850hPa.py` | 850hPa 相当温位・風矢羽（`--area` で広域範囲を指定） | `--ecm` 時 |
 
 ```bash
-python jet_front_wide_report.py INIT_TIME [start_ft] [n_steps] [--interval N] [--levels ...] [--ecm] [--avg_steps N] [--push]
+python jet_front_wide_report.py INIT_TIME [start_ft] [n_steps] [--interval N] [--levels ...] [--ecm] [--ecm-only] [--avg_steps N] [--no-isotac] [--push]
 ```
 
 | 引数 | 形式 | デフォルト | 説明 |
@@ -270,8 +278,10 @@ python jet_front_wide_report.py INIT_TIME [start_ft] [n_steps] [--interval N] [-
 | `n_steps` | 整数 / `12h` / `24h` | `1` | 枚数またはプリセット（`--avg_steps` 指定時は整数のみ） |
 | `--interval` | 時間数 | `6` | FT間隔（プリセット指定時・`--avg_steps` 指定時は無視） |
 | `--levels` | 整数 複数可 | `100` | 上層風の気圧面 hPa |
-| `--ecm` | フラグ | なし | ECMWFも実行 |
+| `--ecm` | フラグ | なし | ECMWFも実行（GSM+ECM） |
+| `--ecm-only` | フラグ | なし | ECMWFのみ実行（GSMをスキップ） |
 | `--avg_steps` | 整数 | `1` | 平均する FT 個数（6h 間隔で N 個を平均して 1 枚出力） |
+| `--no-isotac` | フラグ | なし | 上層風図の ISOTAC シェード・等風速線を非表示にし、等高度線＋矢羽のみにする |
 | `--push` | フラグ | なし | GitHub へ git push（省略時はローカル保存のみ） |
 
 ```bash
@@ -280,10 +290,13 @@ python jet_front_wide_report.py 2026041200 0000 5                    # GSMのみ
 python jet_front_wide_report.py 2026041200 0000 12h                  # 12hプリセット（FT=0〜48h）
 python jet_front_wide_report.py 2026041200 0000 5 --interval 12      # 12h間隔 5枚
 python jet_front_wide_report.py 2026041200 --ecm                     # GSM+ECM FT=0h
+python jet_front_wide_report.py 2026041200 --ecm-only                # ECMのみ FT=0h
 python jet_front_wide_report.py 2026041200 --levels 100 50           # 100+50hPa
 python jet_front_wide_report.py 2026041200 0000 5 --push             # 生成後 GitHub push
 python jet_front_wide_report.py 2026041200 0000 3 --avg_steps 4      # FT0-18h, FT24-42h, FT48-66h 平均 3枚
 python jet_front_wide_report.py 2026041200 0000 1 --levels 100 50 --ecm --avg_steps 4  # 50+100hPa 平均 GSM+ECM
+python jet_front_wide_report.py 2026041200 0000 5 --no-isotac        # ISOTACなし（等高度線＋矢羽のみ）
+python jet_front_wide_report.py 2026041200 0000 3 --avg_steps 4 --no-isotac  # 平均天気図＋等高度線のみ
 ```
 
 生成物: `reports/{init_str}-wide/jet_front_wide_report_{FTラベル}.md`
@@ -318,7 +331,7 @@ python jet_front_wide_report.py 2026041200 0000 1 --levels 100 50 --ecm --avg_st
 | 用途 | 予報シナリオの変化確認 | 現在の平均場・気候場的な変化確認 |
 
 ```bash
-python jet_front_ave_report.py INIT_TIME [n_days] [--levels ...] [--ecm] [--push]
+python jet_front_ave_report.py INIT_TIME [n_days] [--levels ...] [--ecm] [--ecm-only] [--no-isotac] [--push]
 ```
 
 | 引数 | 形式 | デフォルト | 説明 |
@@ -326,16 +339,20 @@ python jet_front_ave_report.py INIT_TIME [n_days] [--levels ...] [--ecm] [--push
 | `INIT_TIME` | YYYYMMDDHH | 必須 | 最新の初期時刻（UTC、00 or 12 のみ） |
 | `n_days` | 整数 | `1` | 平均日数（12h間隔 2個 = 1日） |
 | `--levels` | 整数 複数可 | `100` | 上層風の気圧面 hPa |
-| `--ecm` | フラグ | なし | ECMWFも実行（省略時はGSMのみ） |
+| `--ecm` | フラグ | なし | ECMWFも実行（GSM+ECM、省略時はGSMのみ） |
+| `--ecm-only` | フラグ | なし | ECMWFのみ実行（GSMをスキップ） |
+| `--no-isotac` | フラグ | なし | 上層風図の ISOTAC シェード・等風速線を非表示にし、等高度線＋矢羽のみにする |
 | `--push` | フラグ | なし | GitHub へ git push（省略時はローカル保存のみ） |
 
 ```bash
 python jet_front_ave_report.py 2026050600           # GSMのみ 1日(2個)平均
 python jet_front_ave_report.py 2026050600 3         # GSMのみ 3日(6個)平均
-python jet_front_ave_report.py 2026050600 3 --ecm   # GSM+ECM 3日平均
+python jet_front_ave_report.py 2026050600 3 --ecm       # GSM+ECM 3日平均
+python jet_front_ave_report.py 2026050600 3 --ecm-only  # ECMのみ 3日平均
 python jet_front_ave_report.py 2026050600 3 --levels 100 50        # 50+100hPa 3日平均
 python jet_front_ave_report.py 2026050600 3 --levels 100 50 --ecm  # GSM+ECM 50+100hPa 3日平均
 python jet_front_ave_report.py 2026050600 5 --push  # 5日平均・生成後 GitHub push
+python jet_front_ave_report.py 2026050600 3 --no-isotac  # ISOTACなし 3日平均（等高度線＋矢羽のみ）
 ```
 
 出力ファイル名:
@@ -427,13 +444,15 @@ python synop_report.py 2026041200 0000 5 --ecm --push          # GSM+ECM 5枚 �
 
 ---
 
-### 地上気圧 GSM/ECMWF 比較レポート（ECM_GSM_SurfacePressure.py）
+### 地上気圧 マルチモデル比較レポート（typhoon-multi.py）
 
-GSM と ECMWF の地上気圧天気図を FT ごとに横並びで比較する Markdown レポートを生成するスクリプト。  
-内部で `GSM_faxSrfPre.py` と `ECM_SurfacePressure.py` を実行し、生成した PNG を `reports/{init_str}/` にコピーして Markdown にまとめる。
+GSM・ECMWF・GFS・AIFS・AIFS-ENS（最大5モデル）の地上気圧天気図を FT ごとに横並びで比較する Markdown レポートを生成するスクリプト。  
+内部で `GSM_faxSrfPre.py`・`ECM_SurfacePressure.py`・`GFS_SurfacePressure.py`・`AIFS_SurfacePressure.py`・`AIFS_ENS_SurfacePressure.py` を実行し、生成した PNG を `reports/{init_str}/` にコピーして Markdown にまとめる。
 
 ```bash
-python ECM_GSM_SurfacePressure.py INIT_TIME [start_ft] [n_steps] [--gsm] [--ecm] [--push]
+python typhoon-multi.py INIT_TIME [start_ft] [n_steps] [--interval N]
+                        [--area LON_W LON_E LAT_S LAT_N]
+                        [モデル選択フラグ] [--push]
 ```
 
 | 引数 | 形式 | デフォルト | 説明 |
@@ -441,29 +460,69 @@ python ECM_GSM_SurfacePressure.py INIT_TIME [start_ft] [n_steps] [--gsm] [--ecm]
 | `INIT_TIME` | YYYYMMDDHH | 必須 | 初期時刻（UTC） |
 | `start_ft` | DDHH | `0000` | 開始予報時間 |
 | `n_steps` | 整数 / `12h` / `24h` | `1` | 枚数またはプリセット |
-| `--gsm` | フラグ | なし | GSM のみ実行（デフォルトは両モデル） |
-| `--ecm` | フラグ | なし | ECMWF のみ実行（デフォルトは両モデル） |
+| `--interval` | 時間数 | `6` | FT間隔（プリセット指定時は無視） |
+| `--area` | LON_W LON_E LAT_S LAT_N | `108 156 5 45` | 描画範囲（全モデル共通） |
 | `--push` | フラグ | なし | GitHub へ git push（省略時はローカル保存のみ） |
 
+**モデル選択フラグ（排他オプション）:**
+
+| フラグ | 実行モデル |
+|--------|----------|
+| なし（デフォルト） | GSM + ECM + GFS |
+| `--gsm` | GSM のみ |
+| `--ecm` | ECMWF のみ |
+| `--gfs` | GFS のみ |
+| `--aifs` | AIFS のみ |
+| `--aifs-ens` | AIFS-ENS(cf) のみ |
+| `--gsm-gfs` | GSM + GFS（ECM を除く） |
+| `--gsm-gfs-aifs` | GSM + GFS + AIFS |
+| `--gsm-gfs-aifs-ens` | GSM + GFS + AIFS-ENS(cf) |
+| `--no-ecm` | GSM + GFS + AIFS + AIFS-ENS（ECM を除く全モデル） |
+| `--all` | 全5モデル（GSM + ECM + GFS + AIFS + AIFS-ENS） |
+
+> **データ容量メモ**: ECMWF IFS は ~100MB/FT、AIFS-single は ~数MB/FT、AIFS-ENS cf は ~85MB/FT。ECM を除く `--no-ecm` は通信量節約に有効。
+
+**`--area` 指定例:**
+
+| 指定値 | 範囲 |
+|--------|------|
+| `108 156 5 45` | 東アジア（デフォルト） |
+| `120 140 15 35` | 沖縄周辺 |
+| `120 150 15 40` | 日本近海 |
+| `100 170 0 50` | 広域西太平洋 |
+| `90 180 -10 50` | 南シナ海〜北西太平洋 |
+
 ```bash
-python ECM_GSM_SurfacePressure.py 2026052712                  # FT=0h（GSM+ECM）
-python ECM_GSM_SurfacePressure.py 2026052712 0000 3           # FT=0,6,12h 3枚
-python ECM_GSM_SurfacePressure.py 2026052712 0000 12h         # 12hプリセット（FT=0〜48h）
-python ECM_GSM_SurfacePressure.py 2026052712 --gsm            # GSMのみ FT=0h
-python ECM_GSM_SurfacePressure.py 2026052712 --ecm            # ECMWFのみ FT=0h
-python ECM_GSM_SurfacePressure.py 2026052712 0000 3 --push    # pushあり
+python typhoon-multi.py 2026052712                          # FT=0h（GSM+ECM+GFS）
+python typhoon-multi.py 2026052712 0000 3                   # FT=0,6,12h 3枚
+python typhoon-multi.py 2026052712 0000 12h                 # 12hプリセット（FT=0〜48h）
+python typhoon-multi.py 2026052712 --gsm                    # GSMのみ FT=0h
+python typhoon-multi.py 2026052712 --ecm                    # ECMWFのみ FT=0h
+python typhoon-multi.py 2026052712 --gfs                    # GFSのみ FT=0h
+python typhoon-multi.py 2026052712 --aifs                   # AIFSのみ FT=0h
+python typhoon-multi.py 2026052712 --aifs-ens               # AIFS-ENS(cf)のみ FT=0h
+python typhoon-multi.py 2026052712 --gsm-gfs                # GSM+GFS FT=0h（ECMを除く）
+python typhoon-multi.py 2026052712 --gsm-gfs-aifs           # GSM+GFS+AIFS FT=0h
+python typhoon-multi.py 2026052712 --gsm-gfs-aifs-ens       # GSM+GFS+AIFS-ENS FT=0h
+python typhoon-multi.py 2026052712 --no-ecm                 # GSM+GFS+AIFS+AIFS-ENS（ECM除く）
+python typhoon-multi.py 2026052712 --all                    # 全5モデル
+python typhoon-multi.py 2026052712 --area 120 140 15 35     # 沖縄周辺
+python typhoon-multi.py 2026052712 --area 100 170 0 50      # 広域西太平洋
+python typhoon-multi.py 2026052712 0000 3 --push            # pushあり
 ```
 
-**ECM描画設定（固定値）:**
+**各モデルの描画設定（固定値）:**
 
-| 設定 | 値 | 説明 |
-|---|---|---|
-| `--area` | 108 156 5 45 | 東経108〜156°、北緯5〜45° |
-| `--smooth-size` | 10 | 10×10格子平均スムージング（ECM 0.25°→約2.5°相当） |
-| `--wind-step` | 10 | 風矢羽を10格子おき（約2.5度間隔） |
+| モデル | `--smooth-size` | `--wind-step` | データソース | 初期時刻 |
+|--------|:--------------:|:------------:|------------|---------|
+| GSM | なし | 5格子おき | 京大RISH（全期間無償） | 00z/12z |
+| ECM | 10 | 10格子おき | ECMWF Open Data（最新5日分） | 00z/06z/12z/18z |
+| GFS | 5 | 10格子おき | NOMADS filter（最新 ~10 日分） | 00z/06z/12z/18z |
+| AIFS | 10 | 10格子おき | ECMWF Open Data（最新5日分） | **00z/12z のみ** |
+| AIFS-ENS | 10 | 10格子おき | ECMWF Open Data（最新5日分） | 00z/06z/12z/18z |
 
-GSM 側の描画範囲も `--area 108 156 5 45` を適用（両モデルで範囲を揃えるため）。  
-FT 見出しには UTC+9 で換算した JST 時刻も付与（例: `FT=0h (5/27 21時JST)`）。
+FT 見出しには UTC+9 で換算した JST 時刻も付与（例: `FT=0h (5/27 21時JST)`）。  
+HTTP 429（レート制限）が返った場合は警告を表示し DL フェーズで再試行する（NG 扱いにしない）。
 
 生成物: `reports/{init_str}/srf_comparison_{FTラベル}.md`
 
@@ -576,28 +635,34 @@ python run_gsm_auto.py --init-time 2026041200 --start-ft 0100 --steps 3  # FT=24
 | `--steps` | 連続枚数（6h間隔。省略時は12hプリセット） | 12hプリセット |
 | `--start-ft` | 開始予報時間（DDHH形式、`--steps` 使用時） | `0000` |
 
-### `run_ecm_auto.py` — ECM系自動実行
+### `run_ecm_auto.py` — ECM/AIFS系自動実行
 
 ECMWF Open Dataサーバーへの HEAD リクエストで最新の init_time を特定し、全5本のECMスクリプトを実行する。  
-初期時刻から4時間以内のデータは未公開としてスキップする。
+`--aifs` オプションで AIFS_SurfacePressure.py も追加実行できる。`--aifs-only` で ECM スクリプトをスキップして AIFS のみ実行。  
+初期時刻から4時間以内のデータは未公開としてスキップする。AIFS は 00z/12z のみ。
 
 ```bash
-python run_ecm_auto.py                              # 最新データ、FT=0,12,24,36,48h（12hプリセット）
+python run_ecm_auto.py                              # 最新データ、FT=0,12,24,36,48h（keyモード）
 python run_ecm_auto.py --steps 5                   # FT=0,6,12,18,24h
 python run_ecm_auto.py --init-time 2026041200      # 初期時刻を手動指定
 python run_ecm_auto.py --tcwv                      # 地上気圧図に可降水量シェードを追加
 python run_ecm_auto.py --tp                        # 地上気圧図に積算降水量シェード（FT>0のみ）
+python run_ecm_auto.py --aifs                      # ECMWF + AIFSの地上気圧図を生成
+python run_ecm_auto.py --aifs-only                 # AIFSのみ生成（ECMWF天気図はスキップ）
 ```
 
 | オプション | 説明 | デフォルト |
 |-----------|------|-----------|
 | `--init-time` | 初期時刻 YYYYMMDDHH（省略時は自動検索） | 自動 |
-| `--steps` | 連続枚数（6h間隔。省略時は12hプリセット） | 12hプリセット |
+| `--steps` | 連続枚数（6h間隔。省略時は keyモード: FT=0,12,24,36,48h） | keyモード |
 | `--start-ft` | 開始予報時間（時間数、`--steps` 使用時） | `0` |
 | `--tcwv` | 可降水量シェードを追加（ECM_SurfacePressure.py のみ） | なし |
 | `--tp` | 積算降水量シェードを追加（FT>0必須） | なし |
+| `--aifs` | AIFS_SurfacePressure.py も実行（ECMWFに追加） | なし |
+| `--aifs-only` | AIFSのみ実行（ECMWF天気図はスキップ）。AIFSのURLで最新init_timeを検索 | なし |
 
-> **ECMWF Open Data は最新約5日分のみ無償**。過去データは Copernicus CDS API が必要。
+> **ECMWF Open Data は最新約5日分のみ無償**。過去データは Copernicus CDS API が必要。  
+> **AIFS は 00z/12z のみ**利用可能（06z/18z の AIFS データは存在しない）。
 
 ---
 
@@ -732,6 +797,86 @@ python GSM_faxSrfPre.py 2026041200 0000 1 --area 108 156 5 45  # 描画範囲指
 **`--area LON_W LON_E LAT_S LAT_N`**: 描画範囲を上書き指定（デフォルト: 108〜156°E, 17〜55°N）  
 **注意**: GSM Rgl には可降水量(tcwv/pwat)・積算降水量(tp)が含まれないため非対応。
 
+### GSM_PolarView.py — 北半球極座標天気図
+
+北半球全域を NorthPolarStereo 投影で描画する天気図。ジェット気流の蛇行・長波パターンを俯瞰するのに適している。  
+日本を下方に配置（`central_longitude=140°E`）、南限 20°N（フィリピン北端付近）まで表示。
+
+**描画要素:**
+- 等高度線（気圧面ごとの自動設定、太線・細線）、H/L スタンプ（高度極大・極小、`--hl-size` で検出粒度を変更可）
+- 風速シェード（デフォルト）または高度偏差シェード（`--climo`）
+- 気温コンター（赤破線、3℃間隔・0℃基準、`--temp-ci` で変更可）、W/C スタンプ（気温極大・極小、薄い表示）
+- 気温凡例（左下）
+- 海岸線・緯線（20°N から 10° 間隔）
+
+**3つの平均化モード:**
+
+| モード | 引数 | 内容 |
+|--------|------|------|
+| 単一FT描画 | デフォルト | 指定した初期時刻・FTを1枚描画 |
+| 初期値平均 | `--avg-init N` | 最新から12h間隔でN日分の FT=0h を平均 |
+| FT平均 | `--avg-ft N` | 同一初期時刻の FT を 6h 間隔で N 個平均 |
+
+```bash
+python GSM_PolarView.py INIT_TIME [start_ft] [n_steps]
+                        [--level hPa] [--lat-min 度] [--central-lon 度]
+                        [--no-wind] [--temp-ci N] [--hl-size N]
+                        [--avg-init N | --avg-ft N]
+                        [--climo] [--climo-dir DIR] [--output DIR] [--push]
+```
+
+| 引数 | 形式 | デフォルト | 説明 |
+|---|---|---|---|
+| `INIT_TIME` | YYYYMMDDHH | 必須 | 初期時刻（UTC） |
+| `start_ft` | DDHH | `0000` | 開始予報時間 |
+| `n_steps` | 整数 | `1` | 枚数（通常モード時） |
+| `--level` | 整数 | `500` | 気圧面 hPa（200/300/500/700/850 対応） |
+| `--lat-min` | 度 | `20.0` | 描画南限緯度 |
+| `--central-lon` | 度 | `140` | 投影中心経度（140=日本を下に） |
+| `--no-wind` | フラグ | なし | 風速シェードを非表示（等高度線のみ） |
+| `--temp-ci` | 整数 | `3` | 気温コンター間隔 °C（0℃基準の倍数で表示） |
+| `--hl-size` | 整数 | `50` | H/L・W/C 検出近傍サイズ（格子数、大きいほど大規模系のみ検出） |
+| `--avg-init` | 整数 N | なし | 過去N日平均（FT=0h を 12h 間隔で N 日分） |
+| `--avg-ft` | 整数 N | なし | FT 平均（start_ft から 6h 間隔で N 個） |
+| `--climo` | フラグ | なし | NCEP LTM 1991-2020 平年値との高度偏差シェード表示 |
+| `--climo-dir` | パス | `./data/ncep_climo` | 平年値 NetCDF ファイルの保存先 |
+| `--output` | パス | `./output` | PNG 出力先 |
+| `--push` | フラグ | なし | `reports/` に保存して GitHub push |
+
+```bash
+python GSM_PolarView.py 2026061000                              # 500hPa FT=0h 通常描画
+python GSM_PolarView.py 2026061000 --level 300                  # 300hPa FT=0h
+python GSM_PolarView.py 2026061000 --level 500 --no-wind        # 等高度線のみ
+python GSM_PolarView.py 2026061000 --temp-ci 5                  # 気温コンター 5°C間隔
+python GSM_PolarView.py 2026061000 --hl-size 35                 # H/L 検出をやや細かく
+python GSM_PolarView.py 2026061000 --avg-init 5                 # 過去5日平均（FT=0h×10個）
+python GSM_PolarView.py 2026061000 --avg-ft 4                   # FT=0,6,12,18h 4個平均
+python GSM_PolarView.py 2026061000 --level 500 --climo          # 偏差シェード表示
+python GSM_PolarView.py 2026061000 --level 500 --climo --push   # 偏差シェード + GitHub push
+python GSM_PolarView.py 2026061000 0000 3                       # FT=0,6,12h 3枚連続
+```
+
+**対応気圧面と等高度線設定:**
+
+| 気圧面 | 最小 | 最大 | 等値線間隔 | 太線間隔 |
+|--------|------|------|----------|---------|
+| 200hPa | 11400m | 12900m | 60m | 300m |
+| 300hPa | 8700m | 10200m | 60m | 300m |
+| 500hPa | 4800m | 6000m | 60m | 300m |
+| 700hPa | 2400m | 3600m | 60m | 300m |
+| 850hPa | 900m | 1800m | 30m | 150m |
+
+**偏差シェード（`--climo`）について:**
+
+NOAA PSL の NCEP/NCAR 再解析（1991-2020 LTM）との差を青赤シェードで表示（-120〜+120m / 30m 刻み）。  
+事前に `make_ncep_climo.py` で平年値ファイルを取得しておく必要がある。  
+偏差カラー: 青系（負偏差 = 高度低め）/ 白（平年並み）/ 赤系（正偏差 = 高度高め）。
+
+出力: `output/{YYYYMMDDHH}_FT{FFF}h_GSM_{level}hPa_PolarView.png`  
+`--push` 時: `reports/{YYYYMMDDHH}-polar/polar_view_report.md`
+
+**必要ライブラリ（`--climo` 使用時）:** `netcdf4`（`conda install -n met_env_310 netcdf4`）
+
 ---
 
 ## ECMWF 系スクリプトの使い方
@@ -837,6 +982,69 @@ python ECM_SurfacePressure.py 2026040712 0 1 --smooth-size 15 --wind-step 10 # �
 **`--area LON_W LON_E LAT_S LAT_N`**: 描画範囲を上書き指定（デフォルト: 108〜156°E, 17〜55°N）  
 **`--smooth-size N`**: スムージングサイズ（デフォルト: 10 → 約2.5°相当）  
 **`--wind-step N`**: 矢羽の間引き格子数（デフォルト: 5 ≒ 1.25度間隔）
+
+---
+
+## AIFS 地上気圧天気図スクリプト
+
+ECMWF の AI 気象モデル（AIFS）データを取得して地上気圧天気図を生成するスクリプト。  
+ECMWF Open Data（`https://data.ecmwf.int/forecasts/`）から GRIB2 を自動ダウンロード。
+
+| 略称 | 正式名称（英語） | 日本語訳 |
+|------|--------------|--------|
+| **IFS** | Integrated Forecasting System | 統合予報システム |
+| **AIFS** | Artificial Intelligence Forecasting System | 人工知能予報システム |
+
+### AIFS URL 構造（ECMWF Open Data）
+
+| モデル種別 | URL パス | 初期時刻 | FT 範囲 | ファイルサイズ |
+|-----------|---------|---------|---------|-------------|
+| IFS（統合予報システム・従来型） | `{date}/{HH}z/ifs/0p25/{oper\|scda}/` | 00/06/12/18z | 0〜240h | ~100MB/FT |
+| AIFS-single（AI決定論） | `{date}/{HH}z/aifs-single/0p25/oper/` | **00z/12z のみ** | 0〜240h | ~数MB/FT |
+| AIFS-ENS cf（AIアンサンブル制御値） | `{date}/{HH}z/aifs-ens/0p25/enfo/` | 00/06/12/18z | 0〜360h | ~85MB/FT |
+| AIFS-ENS pf（AIアンサンブル全扰動） | `{date}/{HH}z/aifs-ens/0p25/enfo/` | 00/06/12/18z | 0〜360h | ~4GB/FT（未実装） |
+
+> **ディレクトリ名注意**: AIFS 決定論は `aifs/` ではなく `aifs-single/` が正しい。
+
+### AIFS_SurfacePressure.py — AIFS 地上気圧・風・2m 気温
+
+ECMWF AIFS-single モデルの地上気圧天気図。IFS と同じ描画内容だが tcwv/tp は含まれない（AIFS には該当変数なし）。
+
+```bash
+python AIFS_SurfacePressure.py INIT_TIME [START_FT [N_STEPS]] [--area LON_W LON_E LAT_S LAT_N] [--smooth-size N] [--wind-step N]
+```
+
+```bash
+python AIFS_SurfacePressure.py 2026061800 0 1      # FT=0h 1枚（00z のみ有効）
+python AIFS_SurfacePressure.py 2026061812 0 5      # FT=0〜24h 5枚（12z のみ有効）
+python AIFS_SurfacePressure.py 2026061800 0 5 --area 100 170 0 50  # 広域西太平洋
+```
+
+- **データ保存先**: `data/aifs/`（Git 除外）
+- **初期時刻制限**: 00z/12z のみ（06z/18z は存在しない）
+- **描画要素**: MSL 等圧線（4hPa/20hPa 太線）・10m 風矢羽・2m 等温度線（緑）・H/L スタンプ
+- 出力: `output/{YYYYMMDDHH}_FT{FFF}h_AIFS_SurfacePressure.png`
+
+### AIFS_ENS_SurfacePressure.py — AIFS-ENS 制御メンバー（cf）地上気圧・風・2m 気温
+
+ECMWF AIFS アンサンブルの制御メンバー（cf）のみを取得して描画。全扰動メンバー（pf, ~4GB/FT）は未実装。
+
+```bash
+python AIFS_ENS_SurfacePressure.py INIT_TIME [START_FT [N_STEPS]] [--area LON_W LON_E LAT_S LAT_N] [--smooth-size N] [--wind-step N]
+```
+
+```bash
+python AIFS_ENS_SurfacePressure.py 2026061800 0 1   # FT=0h 1枚
+python AIFS_ENS_SurfacePressure.py 2026061806 0 5   # 06z 初期でFT=0〜24h 5枚（全初期時刻OK）
+python AIFS_ENS_SurfacePressure.py 2026061800 0 5 --area 100 170 0 50
+```
+
+- **データ保存先**: `data/aifs-ens/`（Git 除外）
+- **初期時刻**: 00z/06z/12z/18z の全4回（AIFS-single より多い）
+- **ファイルサイズ**: ~85MB/FT（AIFS-single の数MB/FT より大きいが IFS の ~100MB/FT 以下）
+- **ファイル名形式**: `{YYYYMMDDHH}0000-{FT}h-enfo-cf.grib2`
+- **描画要素**: MSL 等圧線・10m 風矢羽・2m 等温度線（緑）・H/L スタンプ
+- 出力: `output/{YYYYMMDDHH}_FT{FFF}h_AIFS_ENS_SurfacePressure.png`
 
 ---
 
@@ -1047,6 +1255,31 @@ f"GSM {n_days}day avg (FT=0h×{len(init_times)}) {period_str} {tagHp}hPa ..."
 
 ---
 
+## NCEP 平年値データの取得（make_ncep_climo.py）
+
+`GSM_PolarView.py` の `--climo` オプション（高度偏差シェード）を使うには、事前に NOAA PSL から NCEP/NCAR 再解析の月別平年値（LTM）をダウンロードしておく必要がある。
+
+```bash
+python make_ncep_climo.py                           # 未取得ファイルのみダウンロード（推奨）
+python make_ncep_climo.py --force                   # 強制再ダウンロード
+python make_ncep_climo.py --output-dir ./climo      # 保存先を変更
+```
+
+| ファイル | 変数 | サイズ |
+|---------|------|-------|
+| `hgt.mon.ltm.1991-2020.nc` | ジオポテンシャル高度 [m] | ~8 MB |
+| `uwnd.mon.ltm.1991-2020.nc` | 東西風 [m/s] | ~8 MB |
+| `vwnd.mon.ltm.1991-2020.nc` | 南北風 [m/s] | ~8 MB |
+
+- **保存先**: `data/ncep_climo/`（Git 除外）
+- **データ仕様**: 2.5°格子・17 気圧面（1000〜10 hPa）・月別（12 ステップ）
+- **データソース**: NOAA PSL（`https://downloads.psl.noaa.gov/Datasets/ncep.reanalysis/Monthlies/pressure/`）
+- **取得頻度**: 平年値は固定値のため初回のみ実行すればよい
+
+**必要ライブラリ**: `netcdf4`（`conda install -n met_env_310 netcdf4`）
+
+---
+
 ## データソース
 
 ### GSM（気象庁 全球モデル）
@@ -1098,6 +1331,25 @@ Z__C_RJTD_{YYYYMMDDHH}0000_GSM_GPV_Rgl_FD{DDHH}_grib2.bin
 5日以上前のデータは ECMWF Open Data からは取得不可。  
 Copernicus CDS API（`https://cds.climate.copernicus.eu`）を利用する。
 
+### AIFS / AIFS-ENS（ECMWFのAI気象モデル）
+
+| 項目 | AIFS-single | AIFS-ENS cf |
+|------|------------|------------|
+| 提供元 | ECMWF Open Data（無償公開） | ECMWF Open Data（無償公開） |
+| URL | `…/aifs-single/0p25/oper/` | `…/aifs-ens/0p25/enfo/` |
+| 更新頻度 | **1日2回（00z/12z のみ）** | 1日4回（00/06/12/18z） |
+| 利用可能期間 | 最新約5日分のみ | 最新約5日分のみ |
+| 水平解像度 | 0.25°（同上） | 0.25°（同上） |
+| 予報時間 | 0〜240h | 0〜360h |
+| ファイルサイズ | ~数MB/FT（非常に小さい） | ~85MB/FT |
+| 特記 | tcwv/tp 変数なし | cf（制御値）のみ実装。pf（全扰動, ~4GB/FT）は未実装 |
+
+**ファイル名形式**:
+```
+{YYYYMMDDHH}0000-{FT}h-oper-fc.grib2   # AIFS-single
+{YYYYMMDDHH}0000-{FT}h-enfo-cf.grib2   # AIFS-ENS control member
+```
+
 ---
 
 ## GSM と ECMWF の比較
@@ -1141,6 +1393,8 @@ output/{YYYYMMDDHH}_FT{FFF}h_{種別}.png
 | `ECM_SurfacePressure.py` | `2026041300_FT000h_ECM_SurfacePressure.png` |
 | `GSM_100hPa.py` | `2026041300_FT000h_GSM_100hPa_Height_Wind.png` |
 | `ECM_100hPa.py` | `2026041300_FT000h_ECM_100hPa_Height_Wind.png` |
+| `AIFS_SurfacePressure.py` | `2026041300_FT000h_AIFS_SurfacePressure.png` |
+| `AIFS_ENS_SurfacePressure.py` | `2026041300_FT000h_AIFS_ENS_SurfacePressure.png` |
 
 ---
 
@@ -1369,3 +1623,9 @@ data/Jra55/
 | 2026-06-10 | `GSM_EPT850hPa.py` に `--smooth-size` オプション追加（デフォルト 1=なし）。wide 版のみ GSM=3・ECM=6 を指定し、広域表示向けにスムージングを強化（約 1.5° 相当） |
 | 2026-06-10 | upper 高度コンターの色を `black` → `green` に変更。850hPa EPT コンター（線・ラベル）を `#707070`（セメントグレー）に変更。海岸線を upper=`dimgray`・850hPa=`lightgray`（`zorder=1.5` でシェードの前面・コンターの背面に配置）に変更 |
 | 2026-06-10 | 850hPa 矢羽に `zorder=10` を追加し最前面に表示 |
+| 2026-06-11 | `GSM_PolarView.py` 新規作成（北半球極座標天気図。`NorthPolarStereo` 投影・日本下方配置・等高度線+風速シェード。`--avg-init`/`--avg-ft` 2種類の平均化モード・`--push` GitHub push・`--climo` NCEP LTM 平年値との高度偏差シェード対応） |
+| 2026-06-11 | `make_ncep_climo.py` 新規作成（NOAA PSL から NCEP/NCAR LTM 月別平年値 hgt/uwnd/vwnd の 3 ファイル計 ~25 MB を取得。`GSM_PolarView.py --climo` の偏差図に使用） |
+| 2026-06-19 | `AIFS_SurfacePressure.py` 新規作成（ECMWF AIFS-single 地上気圧天気図。URL: `aifs-single/0p25/oper/`、00z/12z のみ） |
+| 2026-06-19 | `AIFS_ENS_SurfacePressure.py` 新規作成（AIFS-ENS 制御メンバー(cf) 地上気圧天気図。URL: `aifs-ens/0p25/enfo/`、~85MB/FT、全初期時刻対応） |
+| 2026-06-19 | `typhoon-multi.py` を AIFS・AIFS-ENS 対応に拡張。モデル選択フラグを `--gsm`/`--ecm`/`--gfs`/`--aifs`/`--aifs-ens`/`--gsm-gfs`/`--gsm-gfs-aifs`/`--gsm-gfs-aifs-ens`/`--no-ecm`/`--all` の 10 種類に増加。HTTP 429（レート制限）を NG 扱いせず警告表示して継続するよう修正 |
+| 2026-06-19 | `run_ecm_auto.py` を AIFS 対応に拡張。`--aifs`（ECM+AIFS 生成）・`--aifs-only`（AIFS のみ）オプション追加 |

@@ -40,6 +40,8 @@ conda activate met_env       # JRA-55 系
 | `GSM_faxSrfPre.py` | 地上気圧・10m風・2m気温 |
 | `GSM_EPT850hPa.py` | 850hPa相当温位・風矢羽 |
 | `GSM_100hPa.py` | 任意気圧面 等高度線・ISOTAC・風矢羽 |
+| `GSM_PolarView.py` | 北半球極座標天気図（NorthPolarStereo、等高度線・風速シェード、ジェット蛇行確認用、`--level`/`--lat-min`/`--no-wind`/`--avg-init`/`--avg-ft`/`--push` 対応） |
+| `make_ncep_climo.py` | NOAA PSL から NCEP/NCAR 月別平年値 LTM（1991-2020）を取得（3ファイル・計 ~25 MB、`data/ncep_climo/` に保存） |
 
 ### 天気図描画スクリプト（ECMWF系）
 
@@ -51,6 +53,13 @@ conda activate met_env       # JRA-55 系
 | `ECM_Fax78.py` | FAX78相当 |
 | `ECM_SurfacePressure.py` | 地上気圧（±可降水量/積算降水量） |
 | `ECM_100hPa.py` | 任意気圧面 等高度線・ISOTAC・風矢羽 |
+
+### 天気図描画スクリプト（AIFS系）
+
+| ファイル | 役割 |
+|--------|------|
+| `AIFS_SurfacePressure.py` | ECMWF AI気象モデル（AIFS-single）地上気圧・風・2m気温。`data/aifs/` へDL・00z/12zのみ |
+| `AIFS_ENS_SurfacePressure.py` | AIFS-ENS コントロールメンバー（cf）地上気圧・風・2m気温。`data/aifs-ens/` へDL・全初期時刻対応・~85MB/FT |
 
 ### 天気図描画スクリプト（GFS系）
 
@@ -108,6 +117,8 @@ conda activate met_env       # JRA-55 系
 | `jra55_config.example.ini` | 認証設定の雛形（ダミー値） |
 | `data_gsm/` | GSM GRIB2データ（Gitから除外） |
 | `data/ecm/` | ECMWF GRIB2データ（Gitから除外） |
+| `data/aifs/` | AIFS-single GRIB2データ（Gitから除外）。`{YYYYMMDDHH}0000-{FT}h-oper-fc.grib2` |
+| `data/aifs-ens/` | AIFS-ENS GRIB2データ（Gitから除外）。`{YYYYMMDDHH}0000-{FT}h-enfo-cf.grib2`（cfのみ） |
 | `data/gfs/` | GFS GRIB2データ（Gitから除外）。`gfs_{YYYYMMDDHH}_f{FFF:03d}_srf.grib2` |
 | `data/Jra55/` | JRA-55 NetCDFキャッシュ（Gitから除外） |
 | `output/` | 生成天気図PNG（Gitから除外） |
@@ -230,3 +241,9 @@ JRA-55（再解析）: 無償・認証必要・リアルタイムなし・1958�
 | 2026-05-13 | `JRA55_Emagram.py`・`GRIB2_Emagram.py` 新規作成（エマグラム全データ源対応） |
 | 2026-05-29 | `GFS_SurfacePressure.py` 新規作成（NOMADS filter DL、地上気圧描画） |
 | 2026-05-29 | `ECM_GSM_SurfacePressure.py` → `typhoon-multi.py` にリネーム。GFS対応・`--area` 追加 |
+| 2026-06-11 | `GSM_PolarView.py` 新規作成（北半球極座標天気図、NorthPolarStereo投影、等高度線+風速シェード、過去N日平均・FT平均・GitHub push対応） |
+| 2026-06-11 | `make_ncep_climo.py` 新規作成→NCEP LTM版に置き換え（NOAA PSL から hgt/uwnd/vwnd LTM 3ファイル取得、計 ~25 MB） |
+| 2026-06-19 | `AIFS_SurfacePressure.py` 新規作成（ECMWF AIFS AI気象モデル対応、`data/aifs/` へDL・00z/12zのみ） |
+| 2026-06-19 | `typhoon-multi.py` に `--aifs` / `--aifs-ens` / `--all` フラグ追加（AIFS・AIFS-ENS対応） |
+| 2026-06-19 | `AIFS_ENS_SurfacePressure.py` 新規作成（AIFS-ENS cfコントロールメンバー対応、00/06/12/18z 全初期時刻）|
+| 2026-06-19 | `run_ecm_auto.py` に `--aifs` / `--aifs-only` フラグ追加・`find_latest_init_time(model=)` 対応 |

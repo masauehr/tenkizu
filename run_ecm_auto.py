@@ -1,19 +1,23 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# ECMWF 最新データ自動検索・ダウンロード・全ECM天気図一括生成スクリプト
+# ECMWF / AIFS 最新データ自動検索・ダウンロード・天気図一括生成スクリプト
 # ECMWF Open Data サーバーを検索して最新のinit_timeを特定し、全ECMスクリプトを実行する。
-# 20260412 上原政博
+# --aifs オプションで AIFS（AI気象モデル）地上気圧天気図も生成可能。
+# 20260412 上原政博 / 20260619 AIFS対応追加
 #
 # 注意:
 #   ECMWF Open Data は最新約5日分のみ無償で取得可能。
 #   過去データは Copernicus CDS API（https://cds.climate.copernicus.eu）が必要。
+#   AIFS は 00z/12z のみ利用可能（06z/18z なし）。
 #
 # 使用例:
 #   python run_ecm_auto.py                    # 最新データでFT=0,12,24,36,48h（keyモード）
 #   python run_ecm_auto.py --steps 5          # FT=0,6,12,18,24h（連続5枚、6h間隔）
 #   python run_ecm_auto.py --init-time 2026041200  # 初期時刻を手動指定
 #   python run_ecm_auto.py --tcwv             # 地上気圧図に可降水量シェードを追加
+#   python run_ecm_auto.py --aifs             # AIFSも生成（ECMWFに追加）
+#   python run_ecm_auto.py --aifs-only        # AIFSのみ生成（ECMWF天気図はスキップ）
 
 import os
 import sys
@@ -41,12 +45,13 @@ ECM_SCRIPTS = [
 ]
 
 
-def find_latest_init_time():
+def find_latest_init_time(model="ifs"):
     """
     ECMWF Open Dataサーバーへの HEAD リクエストで
     最新の利用可能な init_time を検索して返す（YYYYMMDDHH形式）。
+    model: "ifs"（デフォルト）または "aifs"
     ECMWF Open Data は初期時刻から約4〜5時間後に公開される。
-    最新5日分のみ利用可能。
+    最新5日分のみ利用可能。AIFS は 00z/12z のみ。
     """
     now = datetime.now(timezone.utc).replace(tzinfo=None)
 
@@ -60,7 +65,8 @@ def find_latest_init_time():
 
             year, month, day = candidate.year, candidate.month, candidate.day
             fn  = f"{year:04d}{month:02d}{day:02d}{hour:02d}0000-0h-oper-fc.grib2"
-            url = f"{ECM_BASE_URL}/{year:04d}{month:02d}{day:02d}/{hour:02d}z/ifs/0p25/oper/{fn}"
+            sub = "aifs-single" if model == "aifs" else model
+            url = f"{ECM_BASE_URL}/{year:04d}{month:02d}{day:02d}/{hour:02d}z/{sub}/0p25/oper/{fn}"
             try:
                 r = requests.head(url, headers=HEADERS, timeout=15, allow_redirects=True)
                 if r.status_code == 200:
@@ -96,9 +102,18 @@ def parse_args():
   python run_ecm_auto.py --steps 5           # 最新データ、FT=0,6,12,18,24h（連続5枚）
   python run_ecm_auto.py --tcwv              # 地上気圧図に可降水量シェードを追加
   python run_ecm_auto.py --tp                # 地上気圧図に積算降水量シェードを追加（FT>0のみ有効）
+  python run_ecm_auto.py --aifs              # ECMWF + AIFSの地上気圧図を生成
+  python run_ecm_auto.py --aifs-only         # AIFSの地上気圧図のみ生成
   python run_ecm_auto.py --init-time 2026041200         # 初期時刻手動指定
   python run_ecm_auto.py --init-time 2026041200 --start-ft 24 --steps 3  # FT=24,30,36h
-        """,
+
+実行環境（conda の場合）:
+  conda activate met_env_310
+  python run_ecm_auto.py [引数]
+
+  ※ 環境名（met_env_310）は利用者の構築状況により異なります。
+     pygrib / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
+""",
     )
     parser.add_argument(
         "--init-time", type=str, default=None,
@@ -120,6 +135,14 @@ def parse_args():
         "--tp", action="store_true",
         help="ECM_SurfacePressure.py に --tp を渡す（積算降水量シェード、FT>0のみ有効）",
     )
+    parser.add_argument(
+        "--aifs", action="store_true",
+        help="AIFSも実行: AIFS_SurfacePressure.py でAI気象モデルの地上気圧図を生成（ECMWFに追加）",
+    )
+    parser.add_argument(
+        "--aifs-only", action="store_true",
+        help="AIFSのみ実行（ECMWF天気図はスキップ）。AIFS_SurfacePressure.py のみ実行",
+    )
 
     # ? / -? / --? でヘルプ表示
     if any(a in sys.argv[1:] for a in ('?', '-?', '--?')):
@@ -136,9 +159,19 @@ def main():
     script_dir = Path(__file__).parent.resolve()
     os.chdir(script_dir)
 
+    run_aifs      = args.aifs or args.aifs_only
+    run_ecm_suite = not args.aifs_only  # --aifs-only 時はECMスクリプトをスキップ
+
     print("=" * 50)
-    print("ECMWF 自動天気図生成")
+    if args.aifs_only:
+        print("AIFS 自動天気図生成（AIFSのみモード）")
+    elif args.aifs:
+        print("ECMWF + AIFS 自動天気図生成")
+    else:
+        print("ECMWF 自動天気図生成")
     print("  ※ ECMWF Open Data は最新約5日分のみ無償")
+    if run_aifs:
+        print("  ※ AIFS は 00z/12z のみ利用可能")
     print("=" * 50)
 
     # init_time の決定
@@ -149,11 +182,14 @@ def main():
         init_time = args.init_time
         print(f"初期時刻（手動指定）: {init_time} UTC")
     else:
-        print("ECMWF Open Dataサーバーで最新データを検索中...")
-        init_time = find_latest_init_time()
+        # AIFSのみの場合はAIFS URLで検索、それ以外はIFS URLで検索
+        search_model = "aifs" if args.aifs_only else "ifs"
+        model_name   = "AIFS" if args.aifs_only else "ECMWF"
+        print(f"{model_name} Open Dataサーバーで最新データを検索中...")
+        init_time = find_latest_init_time(model=search_model)
         if not init_time:
-            print("エラー: 利用可能なECMWFデータが見つかりませんでした。")
-            print("  最新5日分のみ無償。過去データは --init-time 手動指定 + CDS API が必要です。")
+            print(f"エラー: 利用可能な{model_name}データが見つかりませんでした。")
+            print("  最新5日分のみ無償。過去データは --init-time 手動指定が必要です。")
             sys.exit(1)
         print(f"最新の初期時刻: {init_time} UTC")
 
@@ -174,27 +210,36 @@ def main():
 
     print(f"モード    : {mode_str}")
     if srf_extra:
-        print(f"追加オプション: {' '.join(srf_extra)}（地上気圧図のみ）")
+        print(f"追加オプション: {' '.join(srf_extra)}（ECM地上気圧図のみ）")
     print(f"出力先    : {script_dir}/output/")
     print()
 
-    # 各スクリプトを実行
     success_scripts = 0
-    for script, label in ECM_SCRIPTS:
-        print(f"---------- {label} ----------")
-        # ECM_SurfacePressure.py のみ追加オプションを渡す
-        extra = srf_extra if script == "ECM_SurfacePressure.py" else None
+
+    # ECM系スクリプトを実行（--aifs-only 時はスキップ）
+    if run_ecm_suite:
+        for script, label in ECM_SCRIPTS:
+            print(f"---------- {label} ----------")
+            extra = srf_extra if script == "ECM_SurfacePressure.py" else None
+            for ft_h in ft_h_list:
+                if "--tp" in (extra or []) and ft_h == 0:
+                    print(f"  [FT={ft_h:3d}h]  ※ --tp はFT=0では無効のためスキップ")
+                    continue
+                run_one(script, label, init_time, ft_h, extra)
+            success_scripts += 1
+            print()
+
+    # AIFS_SurfacePressure.py を実行
+    if run_aifs:
+        print("---------- AIFS 地上気圧・風・2m気温 ----------")
         for ft_h in ft_h_list:
-            # --tp は FT=0 には意味がないため警告を出してスキップ
-            if "--tp" in (extra or []) and ft_h == 0:
-                print(f"  [FT={ft_h:3d}h]  ※ --tp はFT=0では無効のためスキップ")
-                continue
-            run_one(script, label, init_time, ft_h, extra)
+            run_one("AIFS_SurfacePressure.py", "AIFS 地上気圧", init_time, ft_h)
         success_scripts += 1
         print()
 
+    total = (len(ECM_SCRIPTS) if run_ecm_suite else 0) + (1 if run_aifs else 0)
     print("=" * 50)
-    print(f"完了: {success_scripts}/{len(ECM_SCRIPTS)} スクリプト")
+    print(f"完了: {success_scripts}/{total} スクリプト")
     print(f"出力先: {script_dir}/output/")
     print("=" * 50)
 

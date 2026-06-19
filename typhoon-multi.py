@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# GSM / ECMWF / GFS 地上気圧天気図 マルチモデル比較レポートスクリプト
-# 既存の GSM_faxSrfPre.py / ECM_SurfacePressure.py / GFS_SurfacePressure.py を実行し、
+# GSM / ECMWF / GFS / AIFS / AIFS-ENS(cf) 地上気圧天気図 マルチモデル比較レポートスクリプト
+# 既存の GSM_faxSrfPre.py / ECM_SurfacePressure.py / GFS_SurfacePressure.py /
+# AIFS_SurfacePressure.py / AIFS_ENS_SurfacePressure.py を実行し、
 # 生成された PNG を reports/{init_str}/ にコピーして
 # FTごとに横並びテーブルで表示する Markdown を生成する。
 # --push で git push まで行う。
@@ -15,6 +16,13 @@
 #   python typhoon-multi.py 2026052712 --gsm                              # GSMのみ FT=0h
 #   python typhoon-multi.py 2026052712 --ecm                              # ECMWFのみ FT=0h
 #   python typhoon-multi.py 2026052712 --gfs                              # GFSのみ FT=0h
+#   python typhoon-multi.py 2026052712 --aifs                             # AIFSのみ FT=0h
+#   python typhoon-multi.py 2026052712 --gsm-gfs                          # GSM+GFSのみ FT=0h
+#   python typhoon-multi.py 2026052712 --gsm-gfs-aifs                     # GSM+GFS+AIFSのみ FT=0h
+#   python typhoon-multi.py 2026052712 --gsm-gfs-aifs-ens                 # GSM+GFS+AIFS-ENSのみ FT=0h
+#   python typhoon-multi.py 2026052712 --aifs-ens                          # AIFS-ENS(cf)のみ FT=0h
+#   python typhoon-multi.py 2026052712 --no-ecm                            # GSM+GFS+AIFS+AIFS-ENS（ECM除く）
+#   python typhoon-multi.py 2026052712 --all                               # 5モデル全比較
 #   python typhoon-multi.py 2026052712 --area 100 160 0 50               # 描画範囲指定
 #   python typhoon-multi.py 2026052712 0000 3 --push                      # pushあり
 
@@ -58,6 +66,13 @@ def parse_args():
   python typhoon-multi.py 2026052712 --gsm                    # GSMのみ FT=0h
   python typhoon-multi.py 2026052712 --ecm                    # ECMWFのみ FT=0h
   python typhoon-multi.py 2026052712 --gfs                    # GFSのみ FT=0h
+  python typhoon-multi.py 2026052712 --aifs                   # AIFSのみ FT=0h（00z/12zのみ）
+  python typhoon-multi.py 2026052712 --gsm-gfs               # GSM+GFSのみ FT=0h（ECMWFを除く）
+  python typhoon-multi.py 2026052712 --gsm-gfs-aifs          # GSM+GFS+AIFSのみ FT=0h（ECMWFを除く）
+  python typhoon-multi.py 2026052712 --gsm-gfs-aifs-ens     # GSM+GFS+AIFS-ENSのみ FT=0h
+  python typhoon-multi.py 2026052712 --aifs-ens               # AIFS-ENS(cf)のみ（00/06/12/18z対応）
+  python typhoon-multi.py 2026052712 --no-ecm                # GSM+GFS+AIFS+AIFS-ENS（ECM除く、容量節約）
+  python typhoon-multi.py 2026052712 --all                   # GSM+ECM+GFS+AIFS+AIFS-ENS 5モデル全比較
   python typhoon-multi.py 2026052712 0000 3 --push            # pushあり
 
 描画範囲の指定例（--area LON_W LON_E LAT_S LAT_N）:
@@ -68,9 +83,18 @@ def parse_args():
   --area  90 180 -10  50   南シナ海〜北西太平洋
 
 描画設定:
-  ECM: --smooth-size 10 --wind-step 10（固定）
-  GFS: --smooth-size 5  --wind-step 10（固定）
-        """
+  ECM:  --smooth-size 10 --wind-step 10（固定）
+  GFS:  --smooth-size 5  --wind-step 10（固定）
+  AIFS:     --smooth-size 10 --wind-step 10（固定）※00z/12zのみ利用可
+  AIFS-ENS: --smooth-size 10 --wind-step 10（固定）※00/06/12/18z 全初期時刻対応・~85MB/FT
+
+実行環境（conda の場合）:
+  conda activate met_env_310
+  python typhoon-multi.py 2026052712 --gsm-gfs
+
+  ※ 環境名（met_env_310）は利用者の構築状況により異なります。
+     pygrib / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
+"""
     )
     parser.add_argument("init_time", type=str,
                         help="初期時刻 YYYYMMDDHH（UTC）")
@@ -90,6 +114,20 @@ def parse_args():
                             help="ECMWFのみ実行（デフォルトは全モデル）")
     mode_group.add_argument("--gfs", action="store_true",
                             help="GFSのみ実行（デフォルトは全モデル）")
+    mode_group.add_argument("--aifs", action="store_true",
+                            help="AIFS（ECMWFのAI気象モデル）のみ実行（00z/12zのみ）")
+    mode_group.add_argument("--gsm-gfs", action="store_true",
+                            help="GSM+GFSのみ実行（ECMWFを除く）")
+    mode_group.add_argument("--gsm-gfs-aifs", action="store_true",
+                            help="GSM+GFS+AIFSのみ実行（ECMWFを除く、00z/12zのみ）")
+    mode_group.add_argument("--aifs-ens", action="store_true",
+                            help="AIFS-ENS コントロールメンバー(cf)のみ実行（00/06/12/18z 全初期時刻）")
+    mode_group.add_argument("--gsm-gfs-aifs-ens", action="store_true",
+                            help="GSM+GFS+AIFS-ENS(cf)のみ実行（AIFSを除く）")
+    mode_group.add_argument("--no-ecm", action="store_true",
+                            help="ECMを除く全モデル実行: GSM+GFS+AIFS+AIFS-ENS（ECMデータ容量節約）")
+    mode_group.add_argument("--all", action="store_true",
+                            help="GSM+ECM+GFS+AIFS+AIFS-ENS 全モデル実行")
     parser.add_argument("--push", action="store_true",
                         help="GitHub へ git push する（省略時はローカル保存のみ）")
 
@@ -126,9 +164,10 @@ GSM_BASE_URL   = "http://database.rish.kyoto-u.ac.jp/arch/jmadata/data/gpv/origi
 ECM_BASE_URL   = "https://data.ecmwf.int/forecasts"
 GFS_NOMADS_PUB = "https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod"
 HTTP_HEADERS   = {"User-Agent": "Mozilla/5.0 (compatible; DataChecker/1.0)"}
+AIFS_BASE_URL  = ECM_BASE_URL  # AIFSも同じベースURL、パスが aifs/0p25/oper
 
 
-def check_data_files(init_str, ft_list_h, run_gsm, run_ecm, run_gfs):
+def check_data_files(init_str, ft_list_h, run_gsm, run_ecm, run_gfs, run_aifs=False, run_aifs_ens=False):
     """ローカルファイルを優先確認し、なければサーバー HEAD リクエストで存在確認する。"""
     script_dir = Path(__file__).parent.resolve()
     i_year  = int(init_str[0:4])
@@ -152,6 +191,8 @@ def check_data_files(init_str, ft_list_h, run_gsm, run_ecm, run_gfs):
                     r = requests.head(url, headers=HTTP_HEADERS, timeout=15)
                     if r.status_code == 200:
                         print(f"  GSM FT={ft_h:3d}h: OK (サーバー)")
+                    elif r.status_code == 429:
+                        print(f"  GSM FT={ft_h:3d}h: アクセス制限中（HTTP 429）→ DL時に再試行")
                     else:
                         print(f"  GSM FT={ft_h:3d}h: NG (HTTP {r.status_code})")
                         missing.append(f"    {url}")
@@ -171,6 +212,8 @@ def check_data_files(init_str, ft_list_h, run_gsm, run_ecm, run_gfs):
                     r = requests.head(url, headers=HTTP_HEADERS, timeout=15)
                     if r.status_code == 200:
                         print(f"  ECM FT={ft_h:3d}h: OK (サーバー)")
+                    elif r.status_code == 429:
+                        print(f"  ECM FT={ft_h:3d}h: アクセス制限中（HTTP 429）→ DL時に再試行")
                     else:
                         print(f"  ECM FT={ft_h:3d}h: NG (HTTP {r.status_code})")
                         missing.append(f"    {url}")
@@ -189,11 +232,56 @@ def check_data_files(init_str, ft_list_h, run_gsm, run_ecm, run_gfs):
                     r = requests.head(url, headers=HTTP_HEADERS, timeout=15)
                     if r.status_code == 200:
                         print(f"  GFS FT={ft_h:3d}h: OK (サーバー)")
+                    elif r.status_code == 429:
+                        print(f"  GFS FT={ft_h:3d}h: アクセス制限中（HTTP 429）→ DL時に再試行")
                     else:
                         print(f"  GFS FT={ft_h:3d}h: NG (HTTP {r.status_code})")
                         missing.append(f"    {url}")
                 except requests.RequestException as e:
                     print(f"  GFS FT={ft_h:3d}h: NG (接続エラー: {e})")
+                    missing.append(f"    {url}")
+
+        if run_aifs:
+            # AIFSは常に oper（scda なし）
+            aifs_fn = f"{init_str}0000-{ft_h}h-oper-fc.grib2"
+            local   = script_dir / "data" / "aifs" / aifs_fn
+            if local.exists():
+                print(f"  AIFS FT={ft_h:3d}h: OK (ローカル)")
+            else:
+                url = (f"{AIFS_BASE_URL}/{i_year:04d}{i_month:02d}{i_day:02d}"
+                       f"/{i_hourZ:02d}z/aifs-single/0p25/oper/{aifs_fn}")
+                try:
+                    r = requests.head(url, headers=HTTP_HEADERS, timeout=15)
+                    if r.status_code == 200:
+                        print(f"  AIFS FT={ft_h:3d}h: OK (サーバー)")
+                    elif r.status_code == 429:
+                        print(f"  AIFS FT={ft_h:3d}h: アクセス制限中（HTTP 429）→ DL時に再試行")
+                    else:
+                        print(f"  AIFS FT={ft_h:3d}h: NG (HTTP {r.status_code})")
+                        missing.append(f"    {url}")
+                except requests.RequestException as e:
+                    print(f"  AIFS FT={ft_h:3d}h: NG (接続エラー: {e})")
+                    missing.append(f"    {url}")
+
+        if run_aifs_ens:
+            ens_fn = f"{init_str}0000-{ft_h}h-enfo-cf.grib2"
+            local  = script_dir / "data" / "aifs-ens" / ens_fn
+            if local.exists():
+                print(f"  AIFS-ENS FT={ft_h:3d}h: OK (ローカル)")
+            else:
+                url = (f"{AIFS_BASE_URL}/{i_year:04d}{i_month:02d}{i_day:02d}"
+                       f"/{i_hourZ:02d}z/aifs-ens/0p25/enfo/{ens_fn}")
+                try:
+                    r = requests.head(url, headers=HTTP_HEADERS, timeout=15)
+                    if r.status_code == 200:
+                        print(f"  AIFS-ENS FT={ft_h:3d}h: OK (サーバー)")
+                    elif r.status_code == 429:
+                        print(f"  AIFS-ENS FT={ft_h:3d}h: アクセス制限中（HTTP 429）→ DL時に再試行")
+                    else:
+                        print(f"  AIFS-ENS FT={ft_h:3d}h: NG (HTTP {r.status_code})")
+                        missing.append(f"    {url}")
+                except requests.RequestException as e:
+                    print(f"  AIFS-ENS FT={ft_h:3d}h: NG (接続エラー: {e})")
                     missing.append(f"    {url}")
 
     if missing:
@@ -222,9 +310,20 @@ def main():
         print("エラー: init_time は YYYYMMDDHH の10桁で指定してください")
         sys.exit(1)
 
-    run_gsm = args.gsm or (not args.ecm and not args.gfs)
-    run_ecm = args.ecm or (not args.gsm and not args.gfs)
-    run_gfs = args.gfs or (not args.gsm and not args.ecm)
+    gsm_gfs          = args.gsm_gfs
+    gsm_gfs_aifs     = args.gsm_gfs_aifs
+    gsm_gfs_aifs_ens = args.gsm_gfs_aifs_ens
+    no_ecm           = args.no_ecm
+    all_models       = args.all
+    any_flag     = (args.gsm or args.ecm or args.gfs or args.aifs or args.aifs_ens
+                    or gsm_gfs or gsm_gfs_aifs or gsm_gfs_aifs_ens or no_ecm or all_models)
+    run_gsm      = (args.gsm or gsm_gfs or gsm_gfs_aifs or gsm_gfs_aifs_ens
+                    or no_ecm or all_models or not any_flag)
+    run_ecm      = args.ecm or all_models or (not any_flag)
+    run_gfs      = (args.gfs or gsm_gfs or gsm_gfs_aifs or gsm_gfs_aifs_ens
+                    or no_ecm or all_models or not any_flag)
+    run_aifs     = args.aifs or gsm_gfs_aifs or no_ecm or all_models
+    run_aifs_ens = args.aifs_ens or gsm_gfs_aifs_ens or no_ecm or all_models
 
     start_ddhh  = int(args.start_ft)
     start_hours = ddhh_to_hours(start_ddhh)
@@ -256,9 +355,11 @@ def main():
     report_dir.mkdir(parents=True, exist_ok=True)
 
     active = []
-    if run_gsm: active.append("GSM")
-    if run_ecm: active.append("ECM")
-    if run_gfs: active.append("GFS")
+    if run_gsm:      active.append("GSM")
+    if run_ecm:      active.append("ECM")
+    if run_gfs:      active.append("GFS")
+    if run_aifs:     active.append("AIFS")
+    if run_aifs_ens: active.append("AIFS-ENS")
     model_label = "+".join(active)
 
     print("=" * 60)
@@ -269,7 +370,7 @@ def main():
 
     # ---- Step 0: データファイル存在確認 ----
     print("\n--- Step 0: データファイル確認 ---")
-    if not check_data_files(init_str, ft_list_h, run_gsm, run_ecm, run_gfs):
+    if not check_data_files(init_str, ft_list_h, run_gsm, run_ecm, run_gfs, run_aifs, run_aifs_ens):
         sys.exit(1)
     print("  全ファイル確認OK")
 
@@ -295,12 +396,26 @@ def main():
                             str(script_dir))
             if not ok:
                 print(f"  警告: GFS_SurfacePressure.py FT={ft_h}h でエラーが発生しました")
+        if run_aifs:
+            ok = run_python("AIFS_SurfacePressure.py",
+                            f"{init_str} {ft_h} 1 {area_arg} --smooth-size 10 --wind-step 10",
+                            str(script_dir))
+            if not ok:
+                print(f"  警告: AIFS_SurfacePressure.py FT={ft_h}h でエラーが発生しました")
+        if run_aifs_ens:
+            ok = run_python("AIFS_ENS_SurfacePressure.py",
+                            f"{init_str} {ft_h} 1 {area_arg} --smooth-size 10 --wind-step 10",
+                            str(script_dir))
+            if not ok:
+                print(f"  警告: AIFS_ENS_SurfacePressure.py FT={ft_h}h でエラーが発生しました")
 
     # ---- Step 2: PNG を reports/ にコピー ----
     print(f"\n--- Step 2: PNG を reports/{init_str}/ にコピー ---")
-    collected_gsm = {}
-    collected_ecm = {}
-    collected_gfs = {}
+    collected_gsm      = {}
+    collected_ecm      = {}
+    collected_gfs      = {}
+    collected_aifs     = {}
+    collected_aifs_ens = {}
 
     for ft_h in ft_list_h:
         if run_gsm:
@@ -318,8 +433,18 @@ def main():
             fname = copy_png(src, report_dir, f"GFS FT={ft_h}h")
             if fname:
                 collected_gfs[ft_h] = fname
+        if run_aifs:
+            src = output_dir / f"{init_str}_FT{ft_h:03d}h_AIFS_SurfacePressure.png"
+            fname = copy_png(src, report_dir, f"AIFS FT={ft_h}h")
+            if fname:
+                collected_aifs[ft_h] = fname
+        if run_aifs_ens:
+            src = output_dir / f"{init_str}_FT{ft_h:03d}h_AIFS_ENS_SurfacePressure.png"
+            fname = copy_png(src, report_dir, f"AIFS-ENS FT={ft_h}h")
+            if fname:
+                collected_aifs_ens[ft_h] = fname
 
-    if not collected_gsm and not collected_ecm and not collected_gfs:
+    if not (collected_gsm or collected_ecm or collected_gfs or collected_aifs or collected_aifs_ens):
         print("エラー: コピーするPNGがありません。処理を中断します。")
         sys.exit(1)
 
@@ -343,19 +468,26 @@ def main():
         "",
     ]
 
-    all_fts = sorted(set(collected_gsm) | set(collected_ecm) | set(collected_gfs))
+    all_fts = sorted(
+        set(collected_gsm) | set(collected_ecm) | set(collected_gfs)
+        | set(collected_aifs) | set(collected_aifs_ens)
+    )
     for ft_h in all_fts:
-        g = collected_gsm.get(ft_h)
-        e = collected_ecm.get(ft_h)
-        f = collected_gfs.get(ft_h)
+        g  = collected_gsm.get(ft_h)
+        e  = collected_ecm.get(ft_h)
+        f  = collected_gfs.get(ft_h)
+        a  = collected_aifs.get(ft_h)
+        ae = collected_aifs_ens.get(ft_h)
         valid_jst = dt_init + timedelta(hours=ft_h + 9)
         jst_label = f"{valid_jst.month}/{valid_jst.day} {valid_jst.hour}時JST"
         lines += [f"#### FT={ft_h}h ({jst_label})", ""]
 
         headers, imgs = [], []
-        if g: headers.append("GSM");   imgs.append(f"![GSM FT={ft_h}h](./{g})")
-        if e: headers.append("ECMWF"); imgs.append(f"![ECMWF FT={ft_h}h](./{e})")
-        if f: headers.append("GFS");   imgs.append(f"![GFS FT={ft_h}h](./{f})")
+        if g:  headers.append("GSM");      imgs.append(f"![GSM FT={ft_h}h](./{g})")
+        if e:  headers.append("ECMWF");    imgs.append(f"![ECMWF FT={ft_h}h](./{e})")
+        if f:  headers.append("GFS");      imgs.append(f"![GFS FT={ft_h}h](./{f})")
+        if a:  headers.append("AIFS");     imgs.append(f"![AIFS FT={ft_h}h](./{a})")
+        if ae: headers.append("AIFS-ENS"); imgs.append(f"![AIFS-ENS FT={ft_h}h](./{ae})")
 
         if len(headers) > 1:
             lines += [
