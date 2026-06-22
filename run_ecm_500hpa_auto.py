@@ -59,7 +59,14 @@ def parse_args():
   python run_ecm_500hpa_auto.py --steps 5                   # FT=0,6,12,18,24h 連続5枚
   python run_ecm_500hpa_auto.py --init-time 2026041200      # 初期時刻を手動指定
   python run_ecm_500hpa_auto.py --init-time 2026041200 --start-ft 24 --steps 3
-        """,
+
+実行環境（conda の場合）:
+  conda activate met_env_310
+  python run_ecm_500hpa_auto.py [引数]
+
+  ※ 環境名（met_env_310）は利用者の構築状況により異なります。
+     pygrib / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
+""",
     )
     parser.add_argument("--init-time",  type=str, default=None,
                         help="初期時刻 YYYYMMDDHH（省略時は自動検索）")

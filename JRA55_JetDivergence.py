@@ -43,7 +43,14 @@ Examples:
   python JRA55_JetDivergence.py 1961071518
   python JRA55_JetDivergence.py 1961071518 --level 300 --data-dir data/Jra55
   JRA55_USER=xxxx JRA55_PASSWORD=yyyy python JRA55_JetDivergence.py 1961071518
-        """,
+
+実行環境（conda の場合）:
+  conda activate met_env
+  python JRA55_JetDivergence.py [引数]
+
+  ※ 環境名（met_env）は利用者の構築状況により異なります。
+     xarray / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
+""",
     )
     parser.add_argument("valid_time", help="valid time in UTC: YYYYMMDDHH")
     parser.add_argument("--level", type=int, default=300, help="pressure level hPa")

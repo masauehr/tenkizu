@@ -94,7 +94,14 @@ def parse_args():
   --lon-s  : 断面始点の経度（デフォルト: 130.0）
   --lon-e  : 断面終点の経度（デフォルト: 130.0）
   --flag-wind: 0=断面平行/垂直風, 1=UV風（デフォルト: 1）
-        """
+
+実行環境（conda の場合）:
+  conda activate met_env_310
+  python GSM_CrossSection.py [引数]
+
+  ※ 環境名（met_env_310）は利用者の構築状況により異なります。
+     pygrib / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
+"""
     )
     parser.add_argument('init_time',   type=str, help='初期時刻 YYYYMMDDHH（UTC）')
     parser.add_argument('start_ft',    type=str, nargs='?', default='0000', help='開始予報時間 DDHH形式')

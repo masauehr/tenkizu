@@ -21,7 +21,14 @@ def parse_args():
   python jra55_synop_report.py 19590915
   python jra55_synop_report.py 1959091512 --charts jet srf
   python jra55_synop_report.py 19590915 --push
-        """,
+
+実行環境（conda の場合）:
+  conda activate met_env
+  python jra55_synop_report.py [引数]
+
+  ※ 環境名（met_env）は利用者の構築状況により異なります。
+     xarray / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
+""",
     )
     parser.add_argument("date", help="対象日時 YYYYMMDD または YYYYMMDDHH（UTC）")
     parser.add_argument("--hour", type=int, default=0, help="YYYYMMDD指定時のUTC時刻（0/6/12/18）")

@@ -282,7 +282,17 @@ def make_slide_4in1(prs, init_time: str, group: dict) -> bool:
 def main():
     parser = argparse.ArgumentParser(
         description="天気図PNG → パワーポイント生成",
-        epilog="例: python make_pptx.py 2026041200"
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+例: python make_pptx.py 2026041200
+
+実行環境（conda の場合）:
+  conda activate met_env_310
+  python make_pptx.py [引数]
+
+  ※ 環境名（met_env_310）は利用者の構築状況により異なります。
+     pygrib / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
+"""
     )
     parser.add_argument("init_time", help="初期時刻 YYYYMMDDHH")
     parser.add_argument(

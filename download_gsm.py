@@ -187,7 +187,14 @@ def main():
   python download_gsm.py --date 20171210 --hour 12 # 指定日・時刻
   python download_gsm.py --start 20171208 --end 20171210  # 期間指定
   python download_gsm.py --date 20171210 --ft 0000 0018 0100  # FT指定
-        """
+
+実行環境（conda の場合）:
+  conda activate met_env_310
+  python download_gsm.py [引数]
+
+  ※ 環境名（met_env_310）は利用者の構築状況により異なります。
+     pygrib / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
+"""
     )
     parser.add_argument('--date', type=str,
                         help='対象日 YYYYMMDD（省略時は最新を自動検索）')

@@ -82,7 +82,14 @@ def parse_args():
   python GSM_QVector850hPa.py 2021082300 0000 1     # 初期値1枚
   python GSM_QVector850hPa.py 2021082300 0000 5     # FT0h〜FT24h 5枚
   python GSM_QVector850hPa.py 2021082300 0100 3 850 # FT24h〜FT36h 3枚
-        """
+
+実行環境（conda の場合）:
+  conda activate met_env_310
+  python GSM_QVector850hPa.py [引数]
+
+  ※ 環境名（met_env_310）は利用者の構築状況により異なります。
+     pygrib / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
+"""
     )
     parser.add_argument('init_time', type=str, help='初期時刻 YYYYMMDDHH（UTC）')
     parser.add_argument('start_ft',  type=str, nargs='?', default='0000', help='開始予報時間 DDHH形式')

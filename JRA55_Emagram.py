@@ -68,6 +68,13 @@ def parse_args():
   python JRA55_Emagram.py 1959091500 --start-ft 0 --steps 5 --interval 6 --lat 25 --lon 125 --push
   python JRA55_Emagram.py 1959091500 --ft 0100 --lat 25 --lon 125
   python JRA55_Emagram.py --valid-time 1959091512 --lat 25 --lon 125
+
+実行環境（conda の場合）:
+  conda activate met_env
+  python JRA55_Emagram.py [引数]
+
+  ※ 環境名（met_env）は利用者の構築状況により異なります。
+     xarray / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
 """,
     )
     parser.add_argument("init_time", nargs="?", help="initial time in UTC: YYYYMMDDHH")

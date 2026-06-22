@@ -120,7 +120,14 @@ def parse_args():
   start_ft  : 最初の予報時間 DDHH形式（DD=日数, HH=時間）例: 0000=FT0h, 0100=FT24h
   n_steps   : 作成する天気図の枚数（6h間隔）例: 2 → start_ftとその6h後
   level     : 気圧面 hPa（省略可、デフォルト: 500）
-        """
+
+実行環境（conda の場合）:
+  conda activate met_env_310
+  python kurora_tenkizu.py [引数]
+
+  ※ 環境名（met_env_310）は利用者の構築状況により異なります。
+     pygrib / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
+"""
     )
     parser.add_argument('init_time', type=str,
                         help='初期時刻 YYYYMMDDHH（UTC）例: 2017121012')

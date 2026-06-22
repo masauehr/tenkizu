@@ -57,6 +57,13 @@ def parse_args():
   python GRIB2_Emagram.py gsm 2026041200 --start-ft 0 --steps 5 --interval 6 --lat 25 --lon 125
   python GRIB2_Emagram.py ecm 2026041200 --ft 24 --lat 25 --lon 125
   python GRIB2_Emagram.py ecm 2026041200 --start-ft 0 --steps 3 --lat 25 --lon 125 --push
+
+実行環境（conda の場合）:
+  conda activate met_env_310
+  python GRIB2_Emagram.py [引数]
+
+  ※ 環境名（met_env_310）は利用者の構築状況により異なります。
+     pygrib / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
 """,
     )
     parser.add_argument("model", choices=("gsm", "ecm"), help="入力モデル")

@@ -25,7 +25,14 @@ def parse_args():
   python jra55_jet_report.py 19590915
   python jra55_jet_report.py 1959091512 --level 300
   python jra55_jet_report.py 19590915 --hours 0 6 12 18 --push
-        """,
+
+実行環境（conda の場合）:
+  conda activate met_env
+  python jra55_jet_report.py [引数]
+
+  ※ 環境名（met_env）は利用者の構築状況により異なります。
+     xarray / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
+""",
     )
     parser.add_argument("date", help="対象日時 YYYYMMDD または YYYYMMDDHH（UTC）")
     parser.add_argument("--hours", type=int, nargs="+", default=None, help="YYYYMMDD指定時の作成時刻 UTC")

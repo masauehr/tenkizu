@@ -150,7 +150,14 @@ def parse_args():
   --area        108 156 17 55  東経108〜156°、北緯17〜55°
   --smooth-size 10             10×10格子平均スムージング（ECM 0.25°→約2.5°相当）
   --wind-step   5              風矢羽を5格子おき（約1.25度間隔）
-        """
+
+実行環境（conda の場合）:
+  conda activate met_env_310
+  python ECM_SurfacePressure.py [引数]
+
+  ※ 環境名（met_env_310）は利用者の構築状況により異なります。
+     pygrib / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
+"""
     )
     parser.add_argument('init_time', type=str,            help='初期時刻 YYYYMMDDHH（UTC）')
     parser.add_argument('start_ft',  type=int, nargs='?', default=0,            help='開始予報時間（時間数）')

@@ -60,7 +60,14 @@ def parse_args():
   python jet_front_report.py 2026041200 --levels 100 50          # 上層風を100+50hPa
   python jet_front_report.py 2026041200 0000 12h --ecm --levels 100 50
   python jet_front_report.py 2026041200 --lat-s 45 --lat-e 25 --lon-s 125 --lon-e 135
-        """
+
+実行環境（conda の場合）:
+  conda activate met_env_310
+  python jet_front_report.py [引数]
+
+  ※ 環境名（met_env_310）は利用者の構築状況により異なります。
+     pygrib / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
+"""
     )
     parser.add_argument('init_time', type=str, help='初期時刻 YYYYMMDDHH（UTC）')
     parser.add_argument('start_ft',  type=str, nargs='?', default='0000',

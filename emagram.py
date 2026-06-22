@@ -329,6 +329,13 @@ def parse_args() -> argparse.Namespace:
   python emagram.py --id 47807 --show
   python emagram.py --site 石垣島 --report
   python emagram.py --site 石垣島 --report --push
+
+実行環境（conda の場合）:
+  conda activate met_env_310
+  python emagram.py [引数]
+
+  ※ 環境名（met_env_310）は利用者の構築状況により異なります。
+     metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
 """,
     )
     parser.add_argument(

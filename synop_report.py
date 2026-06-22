@@ -93,7 +93,14 @@ def parse_args():
   python synop_report.py 2026041200 0000 5 --interval 12      # FT=0〜48h 5枚（12h間隔）
   python synop_report.py 2026041200 --charts jet fax57        # jet と fax57 のみ
   python synop_report.py 2026041200 0000 12h --ecm --charts ept srf
-        """
+
+実行環境（conda の場合）:
+  conda activate met_env_310
+  python synop_report.py [引数]
+
+  ※ 環境名（met_env_310）は利用者の構築状況により異なります。
+     pygrib / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
+"""
     )
     parser.add_argument('init_time',   type=str, help='初期時刻 YYYYMMDDHH（UTC）')
     parser.add_argument('start_ft',    type=str, nargs='?', default='0000',

@@ -14,7 +14,7 @@ GSM（全球モデル）・ECMWF GRIB2 データから各種高層・地上天�
 - **天気図スクリプト**: 18種類（GSM 10本・ECM 6本・JRA-55 2本）
 - **エマグラムスクリプト**: 3種類（Wyoming ゾンデ・GSM/ECM GRIB2・JRA-55 NetCDF）
 - **レポート生成**: 7本（Markdown+PNG → `reports/` に保存、`--push` でGitHub push）
-- **実行環境**: Python 3.10（conda 環境 `met_env_310`：GSM/ECM系 / `met_env`：JRA-55系）
+- **実行環境**: Python 3.10（conda 環境 `met_env_310`：GSM/ECM系 / `met_env`：JRA-55系）→ `python_env.py` で確認可能
 
 ---
 
@@ -49,7 +49,7 @@ tenkizu/
 ├── jet_front_ave_report.py # レポート: 複数初期時刻FT=0h時間平均（梅雨入り判断）
 ├── upper_wind_report.py    # レポート: 上層天気図（任意気圧面）
 ├── synop_report.py         # レポート: 総観天気図（GSM/ECM）
-├── typhoon-multi.py        # レポート: 地上気圧マルチモデル比較（GSM/ECM/GFS、--area 対応）
+├── typhoon-multi.py        # レポート: 地上気圧マルチモデル比較（GSM/ECM/GFS、--gsm-gfs 対応、--area 対応）
 ├── jra55_synop_report.py   # レポート: 総観天気図（JRA-55）
 ├── jra55_jet_report.py     # レポート: ジェット・上層発散（JRA-55）
 ├── run_gsm_auto.py         # GSM系: 最新データ自動検索・一括生成
@@ -60,6 +60,7 @@ tenkizu/
 ├── download_gsm.py         # GSM GRIB2事前ダウンロード専用
 ├── jra55_config.ini        # JRA-55 認証設定（Gitから除外）
 ├── jra55_config.example.ini# JRA-55 認証設定の雛形
+├── python_env.py           # 実行環境確認ツール（どの仮想環境か調べる）
 ├── kurora_tenkizu.py       # 旧メイン版（互換維持）
 ├── run_pipeline.sh         # 旧パイプライン
 ├── samples/                # 各種別サンプルPNG（GitHub閲覧用）
@@ -69,6 +70,39 @@ tenkizu/
 ├── data/gfs/               # GFS GRIB2データ（Gitから除外）
 ├── data/Jra55/             # JRA-55 NetCDFキャッシュ（Gitから除外）
 └── output/                 # 生成天気図PNG（Gitから除外）
+```
+
+---
+
+## 実行環境の確認
+
+どのスクリプトをどの仮想環境で実行すべきかは `python_env.py` で確認できる。  
+このスクリプト自体はどの環境（`base` 含む）でも動作する。
+
+```bash
+python python_env.py              # 全スクリプトの環境一覧
+python python_env.py jet          # "jet" を含むスクリプトを絞り込み
+python python_env.py jra55        # JRA-55系を絞り込み
+python python_env.py ECM          # ECM系を絞り込み
+python python_env.py ?            # ヘルプ表示
+```
+
+出力例（絞り込み）:
+
+```
+「jet」に一致するスクリプト (7件)
+
+[ met_env ]  JRA-55系（xarray/NetCDF使用）
+  activate: conda activate met_env
+  ✓  JRA55_JetDivergence.py
+  ✓  jra55_jet_report.py
+
+[ met_env_310 ]  GSM/ECM/AIFS/GFS系（pygrib使用）
+  activate: conda activate met_env_310
+  ✓  GSM_Jet300hPa.py
+  ✓  jet_front_ave_report.py
+  ✓  jet_front_report.py
+  ✓  jet_front_wide_report.py
 ```
 
 ---
@@ -126,7 +160,8 @@ python <スクリプト名> INIT_TIME [START_FT [N_STEPS]] [オプション]
 
 **ヘルプ表示（全スクリプト共通）:**
 
-引数に `?`・`-?`・`--?` のいずれかを渡すと、引数一覧・使用例を表示して終了する。
+引数に `?`・`-?`・`--?` のいずれかを渡すと、引数一覧・使用例を表示して終了する。  
+ヘルプ末尾には **実行環境セクション**（`conda activate` 例と注釈）を全スクリプトに記載している。
 
 ```bash
 python GSM_fax57.py ?
@@ -425,7 +460,7 @@ GSM・ECM・GFS の地上気圧天気図を横並び比較する Markdown レポ
 ```bash
 python typhoon-multi.py INIT_TIME [start_ft] [n_steps] [--interval N]
                         [--area LON_W LON_E LAT_S LAT_N]
-                        [--gsm | --ecm | --gfs] [--push]
+                        [--gsm | --ecm | --gfs | --gsm-gfs] [--push]
 ```
 
 | `--area` 指定例 | 範囲 |
@@ -442,6 +477,7 @@ python typhoon-multi.py 2026060212 0000 12h                 # 12hプリセット
 python typhoon-multi.py 2026060212 --gsm                    # GSMのみ
 python typhoon-multi.py 2026060212 --ecm                    # ECMWFのみ
 python typhoon-multi.py 2026060212 --gfs                    # GFSのみ
+python typhoon-multi.py 2026060212 --gsm-gfs               # GSM+GFS（ECMWFを除く）
 python typhoon-multi.py 2026060212 --area 120 140 15 35     # 沖縄周辺
 python typhoon-multi.py 2026060212 --area 100 170 0 50      # 広域西太平洋
 python typhoon-multi.py 2026060212 0000 3 --push            # pushあり
@@ -604,6 +640,7 @@ python make_pptx2.py INIT_TIME  # 補完3グループ（不安定域・断面図
 | 2026-05-13 | JRA-55対応を追加（`JRA55_JetDivergence.py`・`JRA55_SynopCharts.py`・`jra55_jet_report.py`・`jra55_synop_report.py`、認証設定ファイル、Markdownレポート生成） |
 | 2026-05-13 | `JRA55_Emagram.py` 追加（JRA-55 NetCDFから任意格子点のエマグラム・温位エマグラム） |
 | 2026-05-13 | `GRIB2_Emagram.py` 追加（GSM/ECM GRIB2から任意格子点のエマグラム・温位エマグラム） |
+| 2026-06-22 | `python_env.py` 追加（スクリプト別推奨仮想環境を一覧・絞り込み表示するユーティリティ） |
 
 ---
 
