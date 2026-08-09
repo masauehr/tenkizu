@@ -53,6 +53,7 @@ tenkizu/
 ├── jra55_synop_report.py   # レポート: 総観天気図（JRA-55）
 ├── jra55_jet_report.py     # レポート: ジェット・上層発散（JRA-55）
 ├── JMA_AnalysisRain.py     # 気象庁 解析雨量（1kmメッシュ）降水強度分布図（自前GRIB2パーサー、要データ手動配置）
+├── JMA_AnalysisRain_sample.ipynb # 解析雨量読み込みサンプル（Jupyter Notebook、実行済み）
 ├── run_gsm_auto.py         # GSM系: 最新データ自動検索・一括生成
 ├── run_ecm_auto.py         # ECM系: 最新データ自動検索・一括生成
 ├── run_all_charts.sh       # 全16スクリプト一括実行
@@ -651,6 +652,8 @@ python JMA_AnalysisRain.py 202108170900 3            # 30分間隔で3枚
 python JMA_AnalysisRain.py 202108170900 3 --interval-min 60
 ```
 
+**サンプルNotebook**: `JMA_AnalysisRain_sample.ipynb`（実行済み。pygribが読めない実演 → 自前パーサーでの読み込み → 可視化まで一通り確認できる）
+
 ---
 
 ## 更新履歴
@@ -671,6 +674,7 @@ python JMA_AnalysisRain.py 202108170900 3 --interval-min 60
 | 2026-05-13 | `GRIB2_Emagram.py` 追加（GSM/ECM GRIB2から任意格子点のエマグラム・温位エマグラム） |
 | 2026-06-22 | `python_env.py` 追加（スクリプト別推奨仮想環境を一覧・絞り込み表示するユーティリティ） |
 | 2026-08-10 | `JMA_AnalysisRain.py` 追加（気象庁解析雨量1kmメッシュ描画。pygribが非対応のGRIB2ローカルテンプレート・ランレングス圧縮を自前パーサーでデコード。自動DL未対応、`data/jmara/` に手動配置） |
+| 2026-08-10 | `JMA_AnalysisRain_sample.ipynb` 追加（解析雨量読み込みサンプルNotebook。pygribの失敗実演→自前パーサー→可視化の一連の流れを実行済み状態で収録） |
 
 ---
 
