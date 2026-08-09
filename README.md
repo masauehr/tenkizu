@@ -52,6 +52,7 @@ tenkizu/
 ├── typhoon-multi.py        # レポート: 地上気圧マルチモデル比較（GSM/ECM/GFS、--gsm-gfs 対応、--area 対応）
 ├── jra55_synop_report.py   # レポート: 総観天気図（JRA-55）
 ├── jra55_jet_report.py     # レポート: ジェット・上層発散（JRA-55）
+├── JMA_AnalysisRain.py     # 気象庁 解析雨量（1kmメッシュ）降水強度分布図（自前GRIB2パーサー、要データ手動配置）
 ├── run_gsm_auto.py         # GSM系: 最新データ自動検索・一括生成
 ├── run_ecm_auto.py         # ECM系: 最新データ自動検索・一括生成
 ├── run_all_charts.sh       # 全16スクリプト一括実行
@@ -69,6 +70,7 @@ tenkizu/
 ├── data/ecm/               # ECMWF GRIB2データ（Gitから除外）
 ├── data/gfs/               # GFS GRIB2データ（Gitから除外）
 ├── data/Jra55/             # JRA-55 NetCDFキャッシュ（Gitから除外）
+├── data/jmara/             # 解析雨量GRIB2データ（Gitから除外、手動配置）
 └── output/                 # 生成天気図PNG（Gitから除外）
 ```
 
@@ -624,6 +626,33 @@ python make_pptx2.py INIT_TIME  # 補完3グループ（不安定域・断面図
 
 ---
 
+## 解析雨量（JMA_AnalysisRain.py）
+
+気象庁 解析雨量（1kmメッシュ）GRIB2から降水強度分布図を描画する。
+
+**注意**: 解析雨量GRIB2は気象庁ローカルのproductDefinitionTemplateと独自のランレングス圧縮を使用しており、
+`pygrib`（eccodes）では `Unable to find template productDefinition` エラーとなり読み込めない。
+そのため本スクリプトはGRIB2第5節・第7節を自前でパースする専用実装（外部GRIB2ライブラリ不使用）。
+
+**自動ダウンロード非対応**: 無償の自動配信元が未確認のため、`data/jmara/` に以下の命名規則で
+GRIB2ファイルを手動配置してから実行すること。
+
+```
+Z__C_RJTD_YYYYMMDDHHMM00_SRF_GPV_Ggis1km_Prr60lv_ANAL_grib2.bin
+```
+
+動作確認用サンプルは気象庁公式サンプルページから入手可能:
+`https://www.data.jma.go.jp/developer/gpv_sample/kotan_kaiseki.zip`
+
+```bash
+conda activate met_env_310
+python JMA_AnalysisRain.py 202108170900              # 1枚
+python JMA_AnalysisRain.py 202108170900 3            # 30分間隔で3枚
+python JMA_AnalysisRain.py 202108170900 3 --interval-min 60
+```
+
+---
+
 ## 更新履歴
 
 | 日付 | 内容 |
@@ -641,6 +670,7 @@ python make_pptx2.py INIT_TIME  # 補完3グループ（不安定域・断面図
 | 2026-05-13 | `JRA55_Emagram.py` 追加（JRA-55 NetCDFから任意格子点のエマグラム・温位エマグラム） |
 | 2026-05-13 | `GRIB2_Emagram.py` 追加（GSM/ECM GRIB2から任意格子点のエマグラム・温位エマグラム） |
 | 2026-06-22 | `python_env.py` 追加（スクリプト別推奨仮想環境を一覧・絞り込み表示するユーティリティ） |
+| 2026-08-10 | `JMA_AnalysisRain.py` 追加（気象庁解析雨量1kmメッシュ描画。pygribが非対応のGRIB2ローカルテンプレート・ランレングス圧縮を自前パーサーでデコード。自動DL未対応、`data/jmara/` に手動配置） |
 
 ---
 

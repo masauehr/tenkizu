@@ -83,6 +83,12 @@ conda activate met_env       # JRA-55 系
 | `JRA55_Emagram.py` | JRA-55 NetCDF | 任意格子点のエマグラム・温位エマグラム（再解析） |
 | `GRIB2_Emagram.py` | GSM/ECM GRIB2 | 任意格子点のエマグラム・温位エマグラム（現業モデル） |
 
+### 解析雨量描画スクリプト
+
+| ファイル | 役割 |
+|--------|------|
+| `JMA_AnalysisRain.py` | 気象庁解析雨量（1kmメッシュ）降水強度分布図。GRIB2ローカルテンプレート・ランレングス圧縮を自前パーサーでデコード（pygrib非対応のため）。自動DL未対応、`data/jmara/` へ手動配置 |
+
 ### レポート生成スクリプト
 
 | ファイル | 役割 |
@@ -121,6 +127,7 @@ conda activate met_env       # JRA-55 系
 | `data/aifs-ens/` | AIFS-ENS GRIB2データ（Gitから除外）。`{YYYYMMDDHH}0000-{FT}h-enfo-cf.grib2`（cfのみ） |
 | `data/gfs/` | GFS GRIB2データ（Gitから除外）。`gfs_{YYYYMMDDHH}_f{FFF:03d}_srf.grib2` |
 | `data/Jra55/` | JRA-55 NetCDFキャッシュ（Gitから除外） |
+| `data/jmara/` | 解析雨量GRIB2データ（Gitから除外）。`Z__C_RJTD_{YYYYMMDDHHMM}00_SRF_GPV_Ggis1km_Prr60lv_ANAL_grib2.bin`。自動DL未対応・手動配置 |
 | `output/` | 生成天気図PNG（Gitから除外） |
 | `reports/` | レポート保存先（PNG+Markdown） |
 
@@ -247,3 +254,4 @@ JRA-55（再解析）: 無償・認証必要・リアルタイムなし・1958�
 | 2026-06-19 | `typhoon-multi.py` に `--aifs` / `--aifs-ens` / `--all` フラグ追加（AIFS・AIFS-ENS対応） |
 | 2026-06-19 | `AIFS_ENS_SurfacePressure.py` 新規作成（AIFS-ENS cfコントロールメンバー対応、00/06/12/18z 全初期時刻）|
 | 2026-06-19 | `run_ecm_auto.py` に `--aifs` / `--aifs-only` フラグ追加・`find_latest_init_time(model=)` 対応 |
+| 2026-08-10 | `JMA_AnalysisRain.py` 新規作成（気象庁解析雨量1kmメッシュ描画。pygrib非対応のGRIB2ローカルテンプレート・ランレングス圧縮を自前パーサーでデコード。自動DL未対応、`data/jmara/` に手動配置） |
