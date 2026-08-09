@@ -54,6 +54,7 @@ tenkizu/
 ├── jra55_jet_report.py     # レポート: ジェット・上層発散（JRA-55）
 ├── JMA_AnalysisRain.py     # 気象庁 解析雨量（1kmメッシュ）降水強度分布図（自前GRIB2パーサー、要データ手動配置）
 ├── JMA_AnalysisRain_sample.ipynb # 解析雨量読み込みサンプル（Jupyter Notebook、実行済み）
+├── JMA_NowcastTile.py      # 気象庁 高解像度降水ナウキャスト実況タイル描画（無償・自動DL、直近時刻のみ）
 ├── run_gsm_auto.py         # GSM系: 最新データ自動検索・一括生成
 ├── run_ecm_auto.py         # ECM系: 最新データ自動検索・一括生成
 ├── run_all_charts.sh       # 全16スクリプト一括実行
@@ -656,6 +657,27 @@ python JMA_AnalysisRain.py 202108170900 3 --interval-min 60
 
 ---
 
+## 高解像度降水ナウキャスト実況タイル（JMA_NowcastTile.py）
+
+気象庁防災情報Webサイトの公開タイルAPI（認証不要・無償）から「高解像度降水ナウキャスト実況」を取得して描画する。
+
+**注意**: これは「解析雨量」そのものではなく別プロダクト（`JMA_AnalysisRain.py` とは非互換）。
+レーダー+アメダス較正という点では解析雨量と同種のデータだが、PNGタイル（8階調に量子化済み）を
+色から逆引きしているため連続値ではない。また**直近時刻のみ**取得可能（長期アーカイブなし）。
+
+- データソース: `https://www.jma.go.jp/bosai/jmatile/data/nowc/{時刻}/none/{時刻}/surf/hrpns/{z}/{x}/{y}.png`
+- 参考実装: `/Users/masahiro/web/webapp/gmsRadarAmedasTileViewer`（同APIを使用した既存Webビューア）
+
+```bash
+conda activate met_env_310
+python JMA_NowcastTile.py                           # 直近時刻・日本域
+python JMA_NowcastTile.py --valid-time 202608100900  # 時刻指定（UTC、5分間隔）
+python JMA_NowcastTile.py --area 128 142 30 40       # 描画範囲指定
+python JMA_NowcastTile.py --zoom 8                   # 高解像度（タイル数増）
+```
+
+---
+
 ## 更新履歴
 
 | 日付 | 内容 |
@@ -675,6 +697,7 @@ python JMA_AnalysisRain.py 202108170900 3 --interval-min 60
 | 2026-06-22 | `python_env.py` 追加（スクリプト別推奨仮想環境を一覧・絞り込み表示するユーティリティ） |
 | 2026-08-10 | `JMA_AnalysisRain.py` 追加（気象庁解析雨量1kmメッシュ描画。pygribが非対応のGRIB2ローカルテンプレート・ランレングス圧縮を自前パーサーでデコード。自動DL未対応、`data/jmara/` に手動配置） |
 | 2026-08-10 | `JMA_AnalysisRain_sample.ipynb` 追加（解析雨量読み込みサンプルNotebook。pygribの失敗実演→自前パーサー→可視化の一連の流れを実行済み状態で収録） |
+| 2026-08-10 | `JMA_NowcastTile.py` 追加（気象庁防災情報Webサイトの公開タイルAPIから高解像度降水ナウキャスト実況を無償取得。Webメルカトルタイル結合・色→mm/h逆引き・cartopy地図重畳に対応。直近時刻のみ・8階調量子化） |
 
 ---
 

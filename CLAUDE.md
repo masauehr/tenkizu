@@ -89,6 +89,7 @@ conda activate met_env       # JRA-55 系
 |--------|------|
 | `JMA_AnalysisRain.py` | 気象庁解析雨量（1kmメッシュ）降水強度分布図。GRIB2ローカルテンプレート・ランレングス圧縮を自前パーサーでデコード（pygrib非対応のため）。自動DL未対応、`data/jmara/` へ手動配置 |
 | `JMA_AnalysisRain_sample.ipynb` | 解析雨量読み込みサンプルNotebook（実行済み）。pygribの失敗実演→自前パーサー→可視化の流れを収録 |
+| `JMA_NowcastTile.py` | 気象庁防災情報Webサイトの公開タイルAPI（無償・認証不要）から高解像度降水ナウキャスト実況を取得・描画。解析雨量とは別プロダクト（PNGタイルの色を8階調で逆引き、連続値ではない）。直近時刻のみ・自動DL対応 |
 
 ### レポート生成スクリプト
 
@@ -257,3 +258,4 @@ JRA-55（再解析）: 無償・認証必要・リアルタイムなし・1958�
 | 2026-06-19 | `run_ecm_auto.py` に `--aifs` / `--aifs-only` フラグ追加・`find_latest_init_time(model=)` 対応 |
 | 2026-08-10 | `JMA_AnalysisRain.py` 新規作成（気象庁解析雨量1kmメッシュ描画。pygrib非対応のGRIB2ローカルテンプレート・ランレングス圧縮を自前パーサーでデコード。自動DL未対応、`data/jmara/` に手動配置） |
 | 2026-08-10 | `JMA_AnalysisRain_sample.ipynb` 新規作成（解析雨量読み込みサンプルNotebook、実行済み） |
+| 2026-08-10 | `JMA_NowcastTile.py` 新規作成（気象庁防災情報Webサイトの公開タイルAPIから高解像度降水ナウキャスト実況を無償取得・描画。`/Users/masahiro/web/webapp/gmsRadarAmedasTileViewer` の実装を参考に、Webメルカトルタイル結合・色→mm/h逆引きを実装） |
