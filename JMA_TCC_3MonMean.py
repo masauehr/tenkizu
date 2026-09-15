@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# 気象庁 東京気候センター（TCC）3か月平均天候図 自動ダウンロードスクリプト
+# 気象庁 TCC（Tokyo Climate Center）3か月平均天候図 自動ダウンロードスクリプト
 # 新規作成 20260915 上原政博
 # 20260915 海面水温（3か月平均・平年偏差）対応追加
 # 20260915 降水量平年比（季節、CLIMAT観測ベース）対応追加
@@ -263,7 +263,7 @@ def build_report(yyyymm: str, kind2: str, results: dict, push: bool):
         f"**種別**: {'平年値（norm）' if kind2 == 'norm' else '実況値＋平年偏差（hist）'}"
         "　※ 海面水温・降水量平年比はこの区別を持たず常に同一画像",
         "",
-        "気象庁 東京気候センター（TCC）が公開する季節予報の基本場資料。",
+        "気象庁 TCC（Tokyo Climate Center）が公開する季節予報の基本場資料。",
         "※ 実際の3か月期間は要素グループによって基準年月の意味が異なる"
         "（気候システム監視系＝終了月／海面水温・降水量平年比＝中央月）ため、"
         "各画像の見出しに実期間を明記している。",
@@ -353,7 +353,7 @@ def find_latest_yyyymm(kind2: str, probe_elem: str = "z500"):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="東京気候センター（TCC）3か月平均天候図（500hPa高度/850hPa気温/流線関数/速度ポテンシャル/海面水温/降水量平年比）をまとめてダウンロードする",
+        description="TCC（Tokyo Climate Center）3か月平均天候図（500hPa高度/850hPa気温/流線関数/速度ポテンシャル/海面水温/降水量平年比）をまとめてダウンロードする",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 使用例:

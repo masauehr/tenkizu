@@ -95,7 +95,7 @@ conda activate met_env       # JRA-55 系
 
 | ファイル | 役割 |
 |--------|------|
-| `JMA_TCC_3MonMean.py` | 気象庁東京気候センター（TCC）の3か月平均天候図（500hPa高度・850hPa気温・850/200hPa流線関数・850/200hPa速度ポテンシャル・海面水温・降水量平年比、計9要素）をGIF画像で自動DL。描画は行わずTCC提供の図をそのまま取得（格子点数値データではない）。`data/tcc/{YYYYMM}/` へ保存。ダウンロード成功時は他レポート系スクリプトと同様に `reports/tcc_{YYYYMM}/` へMarkdownレポート（画像埋め込み）を自動生成し、`--push` でGitHub push可能。**注意**: `--yyyymm` の意味は要素グループで異なる（z500/t850等=終了月、sst/ssta/gprt=中央月。TCC側の仕様） |
+| `JMA_TCC_3MonMean.py` | 気象庁に設置されたTCC（Tokyo Climate Center）の3か月平均天候図（500hPa高度・850hPa気温・850/200hPa流線関数・850/200hPa速度ポテンシャル・海面水温・降水量平年比、計9要素）をGIF画像で自動DL。描画は行わずTCC提供の図をそのまま取得（格子点数値データではない）。`data/tcc/{YYYYMM}/` へ保存。ダウンロード成功時は他レポート系スクリプトと同様に `reports/tcc_{YYYYMM}/` へMarkdownレポート（画像埋め込み）を自動生成し、`--push` でGitHub push可能。**注意**: `--yyyymm` の意味は要素グループで異なる（z500/t850等=終了月、sst/ssta/gprt=中央月。TCC側の仕様） |
 
 ### レポート生成スクリプト
 
@@ -266,5 +266,5 @@ JRA-55（再解析）: 無償・認証必要・リアルタイムなし・1958�
 | 2026-08-10 | `JMA_AnalysisRain.py` 新規作成（気象庁解析雨量1kmメッシュ描画。pygrib非対応のGRIB2ローカルテンプレート・ランレングス圧縮を自前パーサーでデコード。自動DL未対応、`data/jmara/` に手動配置） |
 | 2026-08-10 | `JMA_AnalysisRain_sample.ipynb` 新規作成（解析雨量読み込みサンプルNotebook、実行済み） |
 | 2026-08-10 | `JMA_NowcastTile.py` 新規作成（気象庁防災情報Webサイトの公開タイルAPIから高解像度降水ナウキャスト実況を無償取得・描画。`/Users/masahiro/web/webapp/gmsRadarAmedasTileViewer` の実装を参考に、Webメルカトルタイル結合・色→mm/h逆引きを実装） |
-| 2026-09-15 | `JMA_TCC_3MonMean.py` 新規作成（気象庁東京気候センター（TCC）の3か月平均天候図9要素をGIF自動DL。TCCサイトのJavaScriptを解析してURL規則を特定：気候システム監視系=500hPa高度/850hPa気温/流線関数/速度ポテンシャル、El Niño Monitoring系=海面水温、World Climate季節図=降水量平年比。要素ごとのデータ確定タイミング差に対応する自動フォールバック実装） |
+| 2026-09-15 | `JMA_TCC_3MonMean.py` 新規作成（気象庁に設置されたTCC（Tokyo Climate Center）の3か月平均天候図9要素をGIF自動DL。TCCサイトのJavaScriptを解析してURL規則を特定：気候システム監視系=500hPa高度/850hPa気温/流線関数/速度ポテンシャル、El Niño Monitoring系=海面水温、World Climate季節図=降水量平年比。要素ごとのデータ確定タイミング差に対応する自動フォールバック実装） |
 | 2026-09-15 | `JMA_TCC_3MonMean.py` にレポート生成・GitHub push（`--push`）対応を追加（`reports/tcc_{yyyymm}/` へMarkdown+画像を出力、他レポート系スクリプトと同様の運用に統一）。あわせて `--yyyymm` の日付解釈バグを修正: 実画像キャプション検証の結果、z500/t850/流線関数/速度ポテンシャルは「終了月」、sst/ssta/gprtは「中央月」という非対称仕様（TCC側）と判明し、要素ごとに正しい実期間を計算してレポートに明記するよう修正 |
