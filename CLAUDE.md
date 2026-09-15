@@ -91,6 +91,12 @@ conda activate met_env       # JRA-55 系
 | `JMA_AnalysisRain_sample.ipynb` | 解析雨量読み込みサンプルNotebook（実行済み）。pygribの失敗実演→自前パーサー→可視化の流れを収録 |
 | `JMA_NowcastTile.py` | 気象庁防災情報Webサイトの公開タイルAPI（無償・認証不要）から高解像度降水ナウキャスト実況を取得・描画。解析雨量とは別プロダクト（PNGタイルの色を8階調で逆引き、連続値ではない）。直近時刻のみ・自動DL対応 |
 
+### 季節予報基本場資料ダウンロードスクリプト
+
+| ファイル | 役割 |
+|--------|------|
+| `JMA_TCC_3MonMean.py` | 気象庁東京気候センター（TCC）の3か月平均天候図（500hPa高度・850hPa気温・850/200hPa流線関数・850/200hPa速度ポテンシャル・海面水温・降水量平年比、計9要素）をGIF画像で自動DL。描画は行わずTCC提供の図をそのまま取得（格子点数値データではない）。`data/tcc/{YYYYMM}/` へ保存 |
+
 ### レポート生成スクリプト
 
 | ファイル | 役割 |
@@ -130,6 +136,7 @@ conda activate met_env       # JRA-55 系
 | `data/gfs/` | GFS GRIB2データ（Gitから除外）。`gfs_{YYYYMMDDHH}_f{FFF:03d}_srf.grib2` |
 | `data/Jra55/` | JRA-55 NetCDFキャッシュ（Gitから除外） |
 | `data/jmara/` | 解析雨量GRIB2データ（Gitから除外）。`Z__C_RJTD_{YYYYMMDDHHMM}00_SRF_GPV_Ggis1km_Prr60lv_ANAL_grib2.bin`。自動DL未対応・手動配置 |
+| `data/tcc/` | TCC3か月平均天候図GIFデータ（Gitから除外）。`{YYYYMM}/` サブディレクトリごとに要素別GIFを保存 |
 | `output/` | 生成天気図PNG（Gitから除外） |
 | `reports/` | レポート保存先（PNG+Markdown） |
 
@@ -259,3 +266,4 @@ JRA-55（再解析）: 無償・認証必要・リアルタイムなし・1958�
 | 2026-08-10 | `JMA_AnalysisRain.py` 新規作成（気象庁解析雨量1kmメッシュ描画。pygrib非対応のGRIB2ローカルテンプレート・ランレングス圧縮を自前パーサーでデコード。自動DL未対応、`data/jmara/` に手動配置） |
 | 2026-08-10 | `JMA_AnalysisRain_sample.ipynb` 新規作成（解析雨量読み込みサンプルNotebook、実行済み） |
 | 2026-08-10 | `JMA_NowcastTile.py` 新規作成（気象庁防災情報Webサイトの公開タイルAPIから高解像度降水ナウキャスト実況を無償取得・描画。`/Users/masahiro/web/webapp/gmsRadarAmedasTileViewer` の実装を参考に、Webメルカトルタイル結合・色→mm/h逆引きを実装） |
+| 2026-09-15 | `JMA_TCC_3MonMean.py` 新規作成（気象庁東京気候センター（TCC）の3か月平均天候図9要素をGIF自動DL。TCCサイトのJavaScriptを解析してURL規則を特定：気候システム監視系=500hPa高度/850hPa気温/流線関数/速度ポテンシャル、El Niño Monitoring系=海面水温、World Climate季節図=降水量平年比。要素ごとのデータ確定タイミング差に対応する自動フォールバック実装） |

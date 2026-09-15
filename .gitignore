@@ -10,6 +10,7 @@ data/gfs/
 data/Jra55/
 data/jmara/
 data/ncep_climo/
+data/tcc/
 output/
 .cache/
 .matplotlib/

@@ -39,6 +39,9 @@ GSM（全球モデル）・ECMWF・GFS・AIFS の GRIB2 データをダウンロ
 | `GSM_PolarView.py` | GSM | 北半球極座標天気図（等高度線・風速/偏差シェード） | `*_GSM_{lev}hPa_PolarView.png` |
 | `AIFS_SurfacePressure.py` | AIFS | 地上気圧・10m 風・2m 気温（AIFS-single DL、00z/12z のみ） | `*_AIFS_SurfacePressure.png` |
 | `AIFS_ENS_SurfacePressure.py` | AIFS-ENS | 地上気圧・10m 風・2m 気温（AIFS-ENS cf DL、全初期時刻対応、~85MB/FT） | `*_AIFS_ENS_SurfacePressure.png` |
+| `JMA_AnalysisRain.py` | 解析雨量 | 1kmメッシュ降水強度分布（自前GRIB2パーサー、pygrib非対応のため） | `*_JMA_AnalysisRain.png` |
+| `JMA_NowcastTile.py` | 降水ナウキャスト | 高解像度降水ナウキャスト実況（気象庁公開タイルAPI、無償・直近時刻のみ） | `*_JMA_NowcastTile.png` |
+| `JMA_TCC_3MonMean.py` | TCC3か月平均 | 500hPa高度/850hPa気温/流線関数/速度ポテンシャル/海面水温/降水量平年比（GIF自動DL、描画なし） | `data/tcc/{YYYYMM}/*.gif` |
 
 ### その他スクリプト
 
@@ -53,6 +56,7 @@ GSM（全球モデル）・ECMWF・GFS・AIFS の GRIB2 データをダウンロ
 | `upper_wind_report.py` | 指定気圧面の上層天気図を生成し `reports/` に MD+PNG をまとめる。`--push` で GitHub push |
 | `synop_report.py` | 総観天気図（Jet300hPa・Fax57・Fax78・EPT850hPa・地上気圧）のレポートを生成。`--ecm` 指定時はGSM/ECMを横並びテーブルで比較表示。FT見出しにJST時刻付き。`--charts` で種別指定、`--push` で GitHub push |
 | `typhoon-multi.py` | GSM・ECMWF・GFS・AIFS・AIFS-ENS（最大5モデル）の地上気圧天気図を横並び比較する Markdown レポートを生成。モデル選択フラグで組み合わせ指定可、`--area` で描画範囲指定。`--push` で GitHub push |
+| `GFS_SurfacePressure.py` | GFS 地上気圧天気図単体描画スクリプト。NOMADS filter で地表面変数のみ DL（数 MB）。`--area`/`--smooth-size`/`--wind-step` 対応 |
 | `make_ncep_climo.py` | NOAA PSL から NCEP/NCAR LTM 月別平年値（hgt/uwnd/vwnd）を取得。`GSM_PolarView.py --climo` の偏差シェードに使用。3ファイル計 ~25 MB |
 | `emagram.py` | **エマグラム・温位エマグラム描画**。Wyoming高層ゾンデデータを取得し、エマグラム（CAPE/CIN・ホドグラフ付き）と温位エマグラム（θ/θe/θes/θw）をPNG出力。`--report` でMarkdownレポート生成、`--push` でGitHub push |
 | `GRIB2_Emagram.py` | GSM/ECMWFのGRIB2から任意緯度・経度の格子点エマグラム・温位エマグラムを作図。`--start-ft`/`--steps`/`--interval` で複数FTを連続作図。`--push` でGitHub push |
@@ -60,6 +64,7 @@ GSM（全球モデル）・ECMWF・GFS・AIFS の GRIB2 データをダウンロ
 | `make_pptx.py` | PNG → PowerPoint 自動生成（主要7グループ） |
 | `make_pptx2.py` | PNG → PowerPoint 自動生成（残り3グループ） |
 | `samples/` | 全種別サンプルPNG 14枚 + PowerPoint 1ファイル（GitHub閲覧用） |
+| `python_env.py` | **実行環境確認ツール**。スクリプト別の推奨仮想環境を一覧・絞り込み表示。`base` 含む任意環境で実行可。`python python_env.py jet` で絞り込み、`?` でヘルプ |
 | `kurora_tenkizu.py` | GSM 500hPa 天気図（旧メイン版・互換維持） |
 | `download_gsm.py` | GSM GRIB2 事前ダウンロード専用 |
 | `run_pipeline.sh` | ダウンロード→`kurora_tenkizu.py` の旧パイプライン |
@@ -69,14 +74,26 @@ GSM（全球モデル）・ECMWF・GFS・AIFS の GRIB2 データをダウンロ
 | `data/gfs/` | GFS GRIB2 データ格納ディレクトリ（Git 除外）。ファイル名: `gfs_{YYYYMMDDHH}_f{FFF:03d}_srf.grib2` |
 | `data/aifs/` | AIFS-single GRIB2 データ（Git 除外）。URL: `aifs-single/0p25/oper/`、00z/12z のみ |
 | `data/aifs-ens/` | AIFS-ENS cf データ（Git 除外）。URL: `aifs-ens/0p25/enfo/`、全初期時刻・~85MB/FT |
+| `data/jmara/` | 解析雨量GRIB2データ（Git 除外）。ファイル名: `Z__C_RJTD_{YYYYMMDDHHMM}00_SRF_GPV_Ggis1km_Prr60lv_ANAL_grib2.bin`。自動DL未対応・手動配置 |
+| `data/tcc/` | TCC3か月平均天候図GIF格納ディレクトリ（Git 除外）。`{YYYYMM}/` サブディレクトリごとに要素別GIFを保存 |
 | `output/` | PNG 出力先（Git 除外） |
 
 ---
 
 ## 実行環境
 
+| 環境 | 用途 | 有効化コマンド |
+|------|------|-------------|
+| `met_env_310` | GSM/ECM/AIFS/GFS系（pygrib使用） | `conda activate met_env_310` |
+| `met_env` | JRA-55系（xarray/NetCDF使用） | `conda activate met_env` |
+
+スクリプトごとの推奨環境は `python_env.py` で確認できる（どの環境でも実行可）:
+
 ```bash
-conda activate met_env_310  # Python 3.10
+python python_env.py              # 全スクリプト一覧
+python python_env.py jet          # 名前に "jet" を含むスクリプトを絞り込み
+python python_env.py jra55        # JRA-55系を絞り込み
+python python_env.py ?            # ヘルプ表示
 ```
 
 ---
@@ -115,12 +132,25 @@ python <スクリプト名> INIT_TIME [START_FT [N_STEPS [その他オプショ�
 
 ### ヘルプ表示
 
-引数に `?`・`-?`・`--?` のいずれかを指定すると、そのスクリプトのヘルプ（引数一覧・使用例）を表示して終了する。`parse_args()` を持つ全34スクリプトで共通して有効。
+引数に `?`・`-?`・`--?` のいずれかを指定すると、そのスクリプトのヘルプ（引数一覧・使用例）を表示して終了する。`parse_args()` を持つ全38スクリプトで共通して有効。
 
 ```bash
 python synop_report.py --?     # ヘルプ表示
 python GSM_Jet300hPa.py -?     # 同上
 python jet_front_report.py ?   # 同上
+```
+
+ヘルプ末尾には **実行環境セクション** を全スクリプトに統一して記載している。  
+conda 環境名は利用者の構築状況により異なるため、注釈付きで記載。
+
+```
+実行環境（conda の場合）:
+  conda activate met_env_310       # GSM / ECM / GFS 系
+  conda activate met_env           # JRA-55 系
+  python <スクリプト名> [引数]
+
+  ※ 環境名は利用者の構築状況により異なります。
+     pygrib / metpy / cartopy 等が入った Python 3.10 環境であれば動作します。
 ```
 
 ---
@@ -162,7 +192,7 @@ python jet_front_report.py ?   # 同上
 指定した気圧面の上層天気図（GSM/ECM）を生成し、`reports/{init_str}/` に PNG + `upper_wind_report.md` をまとめて GitHub push するスクリプト。
 
 ```bash
-python upper_wind_report.py INIT_TIME [start_ft] [n_steps] [--interval N] [--levels ...] [--ecm] [--push]
+python upper_wind_report.py INIT_TIME [start_ft] [n_steps] [--interval N] [--levels ...] [--ecm] [--ecm-only] [--push]
 ```
 
 | 引数 | 形式 | デフォルト | 説明 |
@@ -172,7 +202,8 @@ python upper_wind_report.py INIT_TIME [start_ft] [n_steps] [--interval N] [--lev
 | `n_steps` | 整数 / `12h` / `24h` | `1` | 枚数またはプリセット |
 | `--interval` | 時間数 | `6` | FT間隔（プリセット指定時は無視） |
 | `--levels` | 整数 複数可 | `100` | 気圧面 hPa（複数指定可） |
-| `--ecm` | フラグ | なし | ECMWFも実行（省略時はGSMのみ） |
+| `--ecm` | フラグ | なし | ECMWFも実行（GSM+ECM、省略時はGSMのみ） |
+| `--ecm-only` | フラグ | なし | ECMWFのみ実行（GSMをスキップ） |
 | `--push` | フラグ | なし | GitHub へ git push（省略時はローカル保存のみ） |
 
 ```bash
@@ -182,6 +213,7 @@ python upper_wind_report.py 2026041200 0000 12h                       # 12hプ�
 python upper_wind_report.py 2026041200 0000 24h                       # 24hプリセット（FT=0〜120h）
 python upper_wind_report.py 2026041200 0000 5 --interval 12           # 12h間隔 5枚
 python upper_wind_report.py 2026041200 --ecm                          # 100hPa GSM+ECM FT=0h
+python upper_wind_report.py 2026041200 --ecm-only                     # 100hPa ECMのみ FT=0h
 python upper_wind_report.py 2026041200 --levels 100 50                # 100+50hPa GSMのみ
 python upper_wind_report.py 2026041200 0000 12h --levels 100 50 --ecm # 複数面・GSM+ECM
 python upper_wind_report.py 2026041200 0000 5 --push                  # 生成後 GitHub push
@@ -211,7 +243,7 @@ python upper_wind_report.py 2026041200 0000 5 --push                  # 生成�
 | `GSM_faxSrfPre.py` / `ECM_SurfacePressure.py` | 地上気圧・10m風・2m気温 | `--ecm` 時 |
 
 ```bash
-python jet_front_report.py INIT_TIME [start_ft] [n_steps] [--interval N] [--levels ...] [--ecm] [--push]
+python jet_front_report.py INIT_TIME [start_ft] [n_steps] [--interval N] [--levels ...] [--ecm] [--ecm-only] [--push]
                            [--lat-s 度] [--lat-e 度] [--lon-s 度] [--lon-e 度]
 ```
 
@@ -222,7 +254,8 @@ python jet_front_report.py INIT_TIME [start_ft] [n_steps] [--interval N] [--leve
 | `n_steps` | 整数 / `12h` / `24h` | `1` | 枚数またはプリセット |
 | `--interval` | 時間数 | `6` | FT間隔（プリセット指定時は無視） |
 | `--levels` | 整数 複数可 | `100` | 上層風の気圧面 hPa |
-| `--ecm` | フラグ | なし | ECMWFも実行 |
+| `--ecm` | フラグ | なし | ECMWFも実行（GSM+ECM） |
+| `--ecm-only` | フラグ | なし | ECMWFのみ実行（GSM・断面図をスキップ） |
 | `--push` | フラグ | なし | GitHub へ git push（省略時はローカル保存のみ） |
 | `--lat-s` | 度 | `45` | 断面図 北端緯度 |
 | `--lat-e` | 度 | `25` | 断面図 南端緯度 |
@@ -236,6 +269,7 @@ python jet_front_report.py 2026041200 0000 12h                      # 12hプリ�
 python jet_front_report.py 2026041200 0000 24h                      # 24hプリセット（FT=0〜120h）
 python jet_front_report.py 2026041200 0000 5 --interval 12          # 12h間隔 5枚
 python jet_front_report.py 2026041200 --ecm                         # GSM+ECM FT=0h
+python jet_front_report.py 2026041200 --ecm-only                    # ECMのみ（断面図スキップ）
 python jet_front_report.py 2026041200 --levels 100 50               # 上層風を100+50hPa
 python jet_front_report.py 2026041200 0000 12h --ecm --levels 100 50
 python jet_front_report.py 2026041200 --lat-s 45 --lat-e 25 --lon-s 125 --lon-e 135
@@ -372,7 +406,7 @@ python jet_front_ave_report.py 2026050600 3 --no-isotac  # ISOTACなし 3日平�
 >
 > `--levels 100 50` を指定して5〜7日平均（`n_days=5` 〜 `7`）を確認することで、  
 > 梅雨入りに向けた上層場のシフトを捉えやすくなる。  
-> ECMWF Open Data は最新5日分のみ利用可能なため、長期平均には GSM（RISHアーカイブ）を使用すること。
+> ECMWF Open Data は最新5日分のみ利用可能なため、長期平均には GSM（京大RISHアーカイブ）を使用すること。
 
 ---
 
@@ -393,7 +427,7 @@ Jet300hPa・Fax57（500/700hPa）・Fax78（700/850hPa）・850hPa相当温位�
 | `GSM_faxSrfPre.py` / `ECM_SurfacePressure.py` | 地上気圧・10m風・2m気温 | `--ecm` 時 |
 
 ```bash
-python synop_report.py INIT_TIME [start_ft] [n_steps] [--interval N] [--charts ...] [--ecm] [--push]
+python synop_report.py INIT_TIME [start_ft] [n_steps] [--interval N] [--charts ...] [--ecm] [--ecm-only] [--push]
 ```
 
 | 引数 | 形式 | デフォルト | 説明 |
@@ -403,7 +437,8 @@ python synop_report.py INIT_TIME [start_ft] [n_steps] [--interval N] [--charts .
 | `n_steps` | 整数 / `12h` / `24h` | `1` | 枚数またはプリセット |
 | `--interval` | 時間数 | `6` | FT間隔（プリセット指定時は無視） |
 | `--charts` | `jet` `fax57` `fax78` `ept` `srf` 複数可 | 全て | 描画する種別 |
-| `--ecm` | フラグ | なし | ECMWFも実行（Jetは `ECM_100hPa.py level=300` を使用） |
+| `--ecm` | フラグ | なし | ECMWFも実行（GSM+ECM。Jetは `ECM_100hPa.py level=300`） |
+| `--ecm-only` | フラグ | なし | ECMWFのみ実行（GSMをスキップ。JetはECM版なし→スキップ） |
 | `--push` | フラグ | なし | GitHub へ git push（省略時はローカル保存のみ） |
 
 **`--charts` 選択肢:**
@@ -423,6 +458,7 @@ python synop_report.py 2026041200 0000 12h                     # 12hプリセッ
 python synop_report.py 2026041200 0000 24h                     # 24hプリセット（FT=0〜120h）
 python synop_report.py 2026041200 0000 5 --interval 12         # 12h間隔 5枚
 python synop_report.py 2026041200 --ecm                        # GSM+ECM FT=0h
+python synop_report.py 2026041200 --ecm-only                   # ECMのみ（Jetスキップ）
 python synop_report.py 2026041200 --charts jet fax57           # jet と fax57 のみ
 python synop_report.py 2026041200 0000 12h --ecm --charts ept srf  # プリセット＋種別指定
 python synop_report.py 2026041200 0000 5 --ecm --push          # GSM+ECM 5枚 → GitHub push
@@ -612,6 +648,36 @@ python emagram.py --id 47807 --report --push           # WMO番号直接指定�
 
 ---
 
+### GitHub push の補足
+
+#### 通常の push（`--push` オプション）
+
+各レポートスクリプトの `--push` は内部で以下を実行する。
+
+```bash
+git add reports/{init_str}/
+git commit -m "report: ..."
+git push
+```
+
+ファイル内容が前回と同一の場合（同じ PNG・同じ MD）は差分なしと判定され、コミット・push をスキップする。
+
+#### 画像を強制上書き push したい場合
+
+同名ファイルを別パラメータ（`--area` 変更など）で再生成したときは内容が変わるため、`--push` を付けて再実行するだけで自動的に上書き push される。
+
+内容が変わらない場合や手動で強制 push したい場合は以下を実行する。
+
+```bash
+git add reports/2026060212/
+git commit --allow-empty -m "force update: 2026060212"
+git push
+```
+
+`--allow-empty` を付けると差分がなくてもコミットを作れる。
+
+---
+
 ## 自動データ取得＆一括生成（推奨）
 
 最新の init_time を自動検索してデータ取得・全スクリプトを一括実行するスクリプト。  
@@ -619,7 +685,7 @@ python emagram.py --id 47807 --report --push           # WMO番号直接指定�
 
 ### `run_gsm_auto.py` — GSM系自動実行
 
-RISHサーバーのディレクトリ一覧を確認して最新の init_time を特定し、全9本のGSMスクリプトを実行する。  
+京大RISHサーバーのディレクトリ一覧を確認して最新の init_time を特定し、全9本のGSMスクリプトを実行する。  
 初期時刻から3時間以内のデータは未公開としてスキップする。
 
 ```bash
@@ -698,7 +764,7 @@ bash run_all_charts.sh 2026040700 0000 5 --ecm          # FT=0,6,12,18,24h GSM+E
 
 ## GSM 系スクリプトの使い方
 
-データ取得元: **京都大学 RISH サーバー**（自動ダウンロード対応）
+データ取得元: **京大RISH サーバー**（自動ダウンロード対応）
 
 ### GSM_tenkizu500hPa.py — 500hPa 高度・渦度
 
@@ -906,7 +972,7 @@ ECMWF データ（0.25°格子）は GSM（0.125°）より細かく天気図が
 | `ECM_Fax78.py` | 3 | 5 | 108〜156°E, 17〜55°N（固定） |
 | `ECM_100hPa.py` | 3 | 12 | 84〜156°E, 17〜55°N |
 
-> **`ECM_GSM_SurfacePressure.py` での適用値**: `--smooth-size 10 --wind-step 10`（ECM_SurfacePressure.py を呼び出す際の固定値）
+> **`typhoon-multi.py` での適用値**: ECM: `--smooth-size 10 --wind-step 10`、GFS: `--smooth-size 5 --wind-step 10`（各サブスクリプトを呼び出す際の固定値）
 
 ### ECM_tenkizu500hPa.py — 500hPa 高度・渦度
 
@@ -1048,6 +1114,123 @@ python AIFS_ENS_SurfacePressure.py 2026061800 0 5 --area 100 170 0 50
 
 ---
 
+## 解析雨量天気図スクリプト（JMA_AnalysisRain.py）
+
+気象庁 解析雨量（1kmメッシュ）GRIB2から降水強度分布図を描画するスクリプト（2026-08-10新規作成）。
+
+**背景**: 解析雨量GRIB2は気象庁ローカルのproductDefinitionTemplate（第4節50008）と独自のランレングス圧縮（第7節）を使用しており、`pygrib`（eccodes）では `Unable to find template productDefinition` エラーとなり読み込めない。そのため他の`GSM_*`/`ECM_*`系スクリプトとは異なり、GRIB2の第5節・第7節を自前でパースする専用実装（外部GRIB2ライブラリ不使用）。
+
+```bash
+python JMA_AnalysisRain.py VALID_TIME [STEPS] [--interval-min N] [--data-dir DIR] [--output-dir DIR] [--area LON_W LON_E LAT_S LAT_N] [--vmax mm/h]
+```
+
+| 引数 | 形式 | デフォルト | 説明 |
+|---|---|---|---|
+| `VALID_TIME` | YYYYMMDDHHMM または YYYYMMDDHH | 必須 | 解析時刻（UTC、毎時00分・30分のみ） |
+| `STEPS` | 整数 | `1` | 作成する枚数 |
+| `--interval-min` | 分 | `30` | 時刻間隔 |
+| `--data-dir` | パス | `./data/jmara` | GRIB2ファイル配置先 |
+| `--area` | LON_W LON_E LAT_S LAT_N | データ全域（118 150 20 48） | 描画範囲 |
+| `--vmax` | mm/h | `80` | カラースケール上限 |
+
+```bash
+python JMA_AnalysisRain.py 202108170900              # 1枚
+python JMA_AnalysisRain.py 202108170900 3            # 30分間隔で3枚
+python JMA_AnalysisRain.py 202108170900 3 --interval-min 60
+```
+
+**データ入手（自動DL未対応）**: 気象業務支援センターが正規の配信元（有償）。無償の自動配信元は未確認のため、`data/jmara/` に以下の命名規則でファイルを手動配置してから実行する。
+
+```
+Z__C_RJTD_YYYYMMDDHHMM00_SRF_GPV_Ggis1km_Prr60lv_ANAL_grib2.bin
+```
+
+動作確認用サンプルは気象庁公式サンプルページから入手可能: `https://www.data.jma.go.jp/developer/gpv_sample/kotan_kaiseki.zip`
+
+- **格子仕様**: 3360行 × 2560列、全国合成1kmメッシュ（118-150°E, 20-48°N）
+- **描画要素**: 降水強度カラーシェード（0.1〜80+ mm/h、8階調）・海岸線
+- 出力: `output/{YYYYMMDDHHMM}_JMA_AnalysisRain.png`
+
+---
+
+## 高解像度降水ナウキャストタイル描画スクリプト（JMA_NowcastTile.py）
+
+気象庁防災情報Webサイトの公開タイルAPI（認証不要・無償）から「高解像度降水ナウキャスト実況」を取得して描画するスクリプト（2026-08-10新規作成）。`/Users/masahiro/web/webapp/gmsRadarAmedasTileViewer`（同APIを使う既存Webビューア）を参考に実装。
+
+**注意**: `JMA_AnalysisRain.py` の解析雨量とは**別プロダクト**。レーダー+アメダス較正という点では同種のデータだが、配信されるのはPNGタイル画像（8階調に色分け済み）であり、GRIB2のような連続値ではない。色から凡例のRGB対応表を使ってmm/h階級に逆引きしている。また**直近時刻のみ**取得可能（ナウキャストのローリングウィンドウのみ、長期アーカイブなし）。
+
+```bash
+python JMA_NowcastTile.py [--valid-time YYYYMMDDHHMM] [--area LON_W LON_E LAT_S LAT_N] [--zoom N] [--output-dir DIR]
+```
+
+| 引数 | 形式 | デフォルト | 説明 |
+|---|---|---|---|
+| `--valid-time` | YYYYMMDDHHMM または YYYYMMDDHH | 自動推定（直近） | 解析時刻（UTC、5分間隔） |
+| `--area` | LON_W LON_E LAT_S LAT_N | `122 148 24 46`（日本域） | 描画範囲 |
+| `--zoom` | 整数 | `7` | タイルズームレベル（大きいほど高解像度・タイル数増） |
+
+```bash
+python JMA_NowcastTile.py                            # 直近時刻・日本域
+python JMA_NowcastTile.py --valid-time 202608100900   # 時刻指定（UTC）
+python JMA_NowcastTile.py --area 128 142 30 40        # 描画範囲指定
+python JMA_NowcastTile.py --zoom 8                    # 高解像度
+```
+
+- **データソース**: `https://www.jma.go.jp/bosai/jmatile/data/nowc/{時刻}/none/{時刻}/surf/hrpns/{z}/{x}/{y}.png`（XYZタイル、Webメルカトル）
+- **時刻推定**: 実測レイテンシ12.5分を差し引いて5分間隔に丸める（`gmsRadarAmedasTileViewer` の実装に準拠）
+- **色→mm/h逆引き**: 8階調（1/5/10/20/30/50/80mm/h境界）のRGB完全一致判定（実タイル画素で検証済み、アルファブレンドなし）
+- **地図投影**: タイルのネイティブ座標系（EPSG:3857 Webメルカトル）でそのまま描画するため歪みなし
+- 出力: `output/{YYYYMMDDHHMM}_JMA_NowcastTile.png`
+
+---
+
+## TCC3か月平均天候図ダウンロードスクリプト（JMA_TCC_3MonMean.py）
+
+気象庁 東京気候センター（TCC）が公開する季節予報の基本場資料（3か月平均）をまとめて自動ダウンロードするスクリプト（2026-09-15新規作成）。他の `GSM_*`/`ECM_*` 系と異なり**描画は行わず**、TCCが既に作成済みのGIF画像をそのまま取得する（格子点数値データではない）。
+
+**背景**: 気象庁の3か月予報解説資料で使われる基本場図（500hPa高度・850hPa気温・海面水温・速度ポテンシャル・流線関数・降水量平年比の平年偏差）は、TCCサイト上でJavaScriptにより動的に画像URLが組み立てられており直接のダウンロードリンクが存在しない。各ページのJS（`changeImage.js` 等）を解析してURL規則を特定し、Pythonから直接組み立ててダウンロードする。
+
+```bash
+python JMA_TCC_3MonMean.py [--yyyymm YYYYMM [YYYYMM ...]] [--elements ELEM [ELEM ...]] [--norm] [--output-dir DIR]
+```
+
+| 引数 | 形式 | デフォルト | 説明 |
+|---|---|---|---|
+| `--yyyymm` | YYYYMM（複数可） | 自動検索（最新月） | 3か月平均の**中央月**。例: `202603` = 2026年1〜3月平均 |
+| `--elements` | 要素コード（複数可） | 全9要素 | 下表参照 |
+| `--norm` | フラグ | 実況値+平年偏差(`hist`) | 平年値(`norm`)を取得。sst/ssta/gprtには無効（常に無視） |
+| `--output-dir` | パス | `./data/tcc` | 保存先。`{output-dir}/{YYYYMM}/` に要素別GIFを格納 |
+
+**対応要素**
+
+| コード | 内容 | データソース | 提供期間 |
+|---|---|---|---|
+| `z500` | 500hPa高度・平年偏差（北半球） | 気候システム監視 | 1947年9月〜 |
+| `t850` | 850hPa気温・平年偏差（北半球） | 気候システム監視 | 1947年9月〜 |
+| `psi850`/`psi200` | 850/200hPa流線関数・平年偏差（熱帯） | 気候システム監視 | 1947年9月〜 |
+| `chi850`/`chi200` | 850/200hPa速度ポテンシャル・発散風（熱帯） | 気候システム監視 | 1947年9月〜 |
+| `sst`/`ssta` | 海面水温（実況値・平年偏差、全球） | El Niño Monitoring | 1970年2月〜 |
+| `gprt` | 降水量平年比（%、地上観測点シンボル図） | World Climate 季節図 | 直近8シーズン程度のみ |
+
+```bash
+python JMA_TCC_3MonMean.py                                        # 最新月を自動検索し全9要素DL
+python JMA_TCC_3MonMean.py --yyyymm 202603                        # 2026年1〜3月平均を指定
+python JMA_TCC_3MonMean.py --yyyymm 202603 202606                 # 複数年月まとめて指定
+python JMA_TCC_3MonMean.py --yyyymm 202603 --elements z500 t850   # 要素を絞り込み
+python JMA_TCC_3MonMean.py --yyyymm 202607 --elements sst ssta    # 海面水温のみ
+python JMA_TCC_3MonMean.py --yyyymm 202604 --elements gprt        # 降水量平年比（3〜5月平均）
+```
+
+- **URLパターン（気候システム監視系）**: `https://www.data.jma.go.jp/cpd/db/diag/{yyyy}/{extr|trop}/{psnh|lalogl}/3mon/{hist|norm}/{elem}/{...}.gif`（`www.data.jma.go.jp/gmd/...` は `/cpd/...` へ301リダイレクトされるため直接指定）
+- **URLパターン（海面水温）**: `https://www.data.jma.go.jp/cpd/data/elnino/clmrep/fig/{yyyy}/{mm}/{sst|ssta}_sea-gl_color.gif`
+- **URLパターン（降水量平年比）**: `https://ds.data.jma.go.jp/tcc/tcc/products/climate/db_JP/monitor/seasonal/gprt{開始YYMM}{終了YYMM}.gif`。中央月から前後1か月を計算して組み立てる
+- **自動フォールバック**: 要素によってデータ確定タイミングが異なり（海面水温は1か月遅れて確定するなど）自動検索した最新月では404になることがあるため、404時は1か月前へ1回だけ自動リトライする
+- **gprtの制約**: 気象庁の季節区分（3-5/6-8/9-11/12-2月）単位でのみ存在するため、中央月は`1,4,7,10`月のいずれかを指定する必要がある（それ以外はエラーメッセージ付きでスキップ、404を無言で失敗させない）
+- **未対応**: 格子点数値データ（GRIB/NetCDF）としての提供はTCCにないため、数値解析用途にはNCEP/JRA-55等の再解析データ（`make_ncep_climo.py` 等）を使う必要がある
+- 出力: `data/tcc/{YYYYMM}/{要素固有のファイル名}.gif`（既存ファイルは自動スキップ）
+
+---
+
 ## 上層風天気図スクリプト（GSM_100hPa.py / ECM_100hPa.py）
 
 100hPa を標準とする上層等高度線・ISOTAC・風矢羽天気図。`level` 引数で 50hPa などの気圧面にも対応。
@@ -1183,7 +1366,7 @@ valHt_all.append(_valHt)                  # 平滑済みデータを積む
 | 3 | 約0.75° | デフォルト（GSM相当） |
 | 5 | 約1.25° | やや平滑 |
 | 10 | 約2.5° | ECM_SurfacePressure.py デフォルト |
-| 15 | 約3.75° | 強め（`ECM_GSM_SurfacePressure.py` での以前の設定） |
+| 15 | 約3.75° | 強め |
 
 ---
 
@@ -1286,7 +1469,7 @@ python make_ncep_climo.py --output-dir ./climo      # 保存先を変更
 
 | 項目 | 内容 |
 |------|------|
-| 提供元 | 京都大学生存圏研究所 (RISH) データベース |
+| 提供元 | 京大RISH（生存圏研究所） データベース |
 | URL | `http://database.rish.kyoto-u.ac.jp/arch/jmadata/data/gpv/original/` |
 | 更新頻度 | 1日2回（00UTC・12UTC） |
 | 利用可能期間 | 過去データも無償（長期アーカイブあり） |
@@ -1359,11 +1542,11 @@ Copernicus CDS API（`https://cds.climate.copernicus.eu`）を利用する。
 | 開発・提供 | 気象庁（JMA） | 欧州中期予報センター |
 | 水平解像度 | 約13km | 約9km |
 | 更新頻度 | 2回/日 | 4回/日 |
-| 無償取得範囲 | 過去全期間（RISHアーカイブ） | **最新5日分のみ** |
+| 無償取得範囲 | 過去全期間（京大RISHアーカイブ） | **最新5日分のみ** |
 | 地表面変数 | 限定的（tcwv/tp等なし） | 豊富（tcwv・tp・skt等あり） |
 
 **使い分け指針:**
-- **過去事例解析** → GSM（RISHで長期アーカイブ取得可）
+- **過去事例解析** → GSM（京大RISHで長期アーカイブ取得可）
 - **最新予報の高精度解析** → ECMWF（解像度高く地表面変数も豊富）
 - **可降水量・積算降水量の表示** → ECMWF のみ（`ECM_SurfacePressure.py` の `--tcwv`/`--tp`）
 
@@ -1543,7 +1726,7 @@ python jra55_jet_report.py 1961071518 --push
 | `ept` | `TMP/RH/UGRD/VGRD` 850hPa | 等圧面・月別 |
 | `srf` | `PRMSL_msl`, `UGRD_fhg`, `VGRD_fhg`, `TMP_fhg` | 地上・年別 |
 
-RISH上の代表的なパス:
+京大RISH上の代表的なパス:
 
 ```text
 https://database.rish.kyoto-u.ac.jp/arch/jra55/data/isobaric_1.25d/HGT/YYYY/HGT_YYYYMM.nc
@@ -1565,6 +1748,42 @@ data/Jra55/
 - `data/Jra55/`, `output/`, `.cache/`, `.matplotlib/`, `jra55_config.ini` はGit管理対象外。
 - JRA-55の地上変数はファイル内変数名が `PRMSL_msl`, `UGRD_fhg` のようにサフィックス付きである。
 - 1959年9月15日00UTCのテスト出力例は `reports/1959091500-jra55-synop/` にある。
+
+---
+
+## 各国全球モデル データ取得可否
+
+### 現業全球予報モデル
+
+| モデル | 無償リアルタイムGRIB2 | 取得しやすさ |
+|--------|:--------------------:|:----------:|
+| GSM（日本） | ✓ 京大RISH | ◎ |
+| GFS（米国） | ✓ NOMADS | ◎ |
+| ECMWF（欧州） | ✓ Open Data（5日分） | ○ |
+| UKMET（英国） | ✗ | ✗ |
+| CFS（米国・季節） | ✓ NOMADS | △ |
+| GEM（カナダ） | ✓ MSC Datamart | △ |
+
+◎ 全期間無償・大容量 ○ 期間限定 △ 取得可だが制約あり ✗ 商用のみ
+
+### 再解析・アンサンブル
+
+| データ | 無償GRIB2 | リアルタイム | 備考 |
+|--------|:---------:|:-----------:|------|
+| JRA-55（気象庁再解析） | ✓（認証必要） | ✗ | 1958年〜。京大RISH。xarray/NetCDF |
+| TIGGE | ✓（2〜3日遅延） | ✗ | ECMWF MARS経由。UKMET等アンサンブル含む |
+
+### データ取得先 URL
+
+| モデル | URL |
+|--------|-----|
+| GSM（RISH） | `http://database.rish.kyoto-u.ac.jp/arch/jmadata/data/gpv/original/` |
+| ECMWF Open Data | `https://data.ecmwf.int/forecasts/` |
+| GFS（NOMADS） | `https://nomads.ncep.noaa.gov/pub/data/nccf/com/gfs/prod/` |
+| GFS filter | `https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25.pl` |
+| JRA-55（RISH） | `https://database.rish.kyoto-u.ac.jp/arch/jra55/data/isobaric_1.25d/` |
+| GEM（MSC） | `https://dd.weather.gc.ca/` |
+| Copernicus CDS | `https://cds.climate.copernicus.eu/`（ECMWF過去データ・有償） |
 
 ---
 
@@ -1613,7 +1832,9 @@ data/Jra55/
 | 2026-05-27 | ECM系全スクリプトに `--smooth-size` 引数を追加（uniform_filter サイズを CLI から制御可能に。デフォルト: ECM_SurfacePressure=10、その他=3） |
 | 2026-05-27 | `ECM_EPT850hPa.py`・`ECM_Fax78.py`・`ECM_100hPa.py`・`ECM_SurfacePressure.py` に `--wind-step` 引数を追加（風矢羽の間引き格子数を制御。デフォルト: ECM_100hPa=12、その他=5） |
 | 2026-05-27 | 全ECM系スクリプトの `?` ヘルプ epilog にデフォルト描画設定（area/smooth-size/wind-step）を追加 |
-| 2026-05-27 | `ECM_GSM_SurfacePressure.py` に Step 0 サーバーデータ確認処理を追加（RISH/ECMWF サーバーへ HEAD リクエストでファイル存在確認、未公開時は処理中断） |
+| 2026-05-27 | `ECM_GSM_SurfacePressure.py` に Step 0 サーバーデータ確認処理を追加（京大RISH/ECMWF サーバーへ HEAD リクエストでファイル存在確認、未公開時は処理中断） |
+| 2026-05-29 | `GFS_SurfacePressure.py` 新規作成（NOAA NOMADS filter から地表面変数のみ DL、地上気圧・10m風・2m気温・H/L スタンプ描画、`--area`/`--smooth-size`/`--wind-step` 対応） |
+| 2026-05-29 | `ECM_GSM_SurfacePressure.py` を `typhoon-multi.py` にリネーム。GFS 対応追加（`--gfs` フラグ、デフォルトで GSM+ECM+GFS 全モデル実行）、`--area LON_W LON_E LAT_S LAT_N` オプション追加（全モデル共通の描画範囲指定） |
 | 2026-05-27 | `synop_report.py`・`jet_front_report.py`・`jet_front_wide_report.py`・`upper_wind_report.py`・`jet_front_ave_report.py` の5本に Step 0 サーバーデータ確認処理を追加。`jet_front_wide_report.py` は `--avg_steps` 使用時の全サブFTにも対応、`jet_front_ave_report.py` は複数初期時刻をまとめて確認 |
 | 2026-06-10 | `jet_front_wide_report.py`・`jet_front_ave_report.py` の 850hPa 相当温位（EPT）描画範囲を上層（100hPa）と統一（`[70, 180, -12, 30]`） |
 | 2026-06-10 | `GSM_100hPa.py`・`ECM_100hPa.py` に `--no-isotac` オプション追加（ISOTAC シェード/コンターを非表示にし、高度コンター＋矢羽のみ描画） |
@@ -1629,3 +1850,6 @@ data/Jra55/
 | 2026-06-19 | `AIFS_ENS_SurfacePressure.py` 新規作成（AIFS-ENS 制御メンバー(cf) 地上気圧天気図。URL: `aifs-ens/0p25/enfo/`、~85MB/FT、全初期時刻対応） |
 | 2026-06-19 | `typhoon-multi.py` を AIFS・AIFS-ENS 対応に拡張。モデル選択フラグを `--gsm`/`--ecm`/`--gfs`/`--aifs`/`--aifs-ens`/`--gsm-gfs`/`--gsm-gfs-aifs`/`--gsm-gfs-aifs-ens`/`--no-ecm`/`--all` の 10 種類に増加。HTTP 429（レート制限）を NG 扱いせず警告表示して継続するよう修正 |
 | 2026-06-19 | `run_ecm_auto.py` を AIFS 対応に拡張。`--aifs`（ECM+AIFS 生成）・`--aifs-only`（AIFS のみ）オプション追加 |
+| 2026-08-10 | `JMA_AnalysisRain.py` 新規作成（気象庁解析雨量1kmメッシュ降水強度分布図。GRIB2ローカルテンプレート・ランレングス圧縮をpygribが読めないため自前パーサーでデコード。自動DL未対応、`data/jmara/` に手動配置） |
+| 2026-08-10 | `JMA_AnalysisRain_sample.ipynb` 新規作成（解析雨量読み込みサンプルNotebook、実行済み） |
+| 2026-08-10 | `JMA_NowcastTile.py` 新規作成（気象庁防災情報Webサイトの公開タイルAPIから高解像度降水ナウキャスト実況を無償取得・描画。解析雨量とは別プロダクトだが同種のレーダー+アメダス較正データ。Webメルカトルタイル結合・色→mm/h逆引き実装） |
