@@ -1186,39 +1186,51 @@ python JMA_NowcastTile.py --zoom 8                    # 高解像度
 
 ## TCC3か月平均天候図ダウンロードスクリプト（JMA_TCC_3MonMean.py）
 
-気象庁 東京気候センター（TCC）が公開する季節予報の基本場資料（3か月平均）をまとめて自動ダウンロードするスクリプト（2026-09-15新規作成）。他の `GSM_*`/`ECM_*` 系と異なり**描画は行わず**、TCCが既に作成済みのGIF画像をそのまま取得する（格子点数値データではない）。
+気象庁 東京気候センター（TCC）が公開する季節予報の基本場資料（3か月平均）をまとめて自動ダウンロードするスクリプト（2026-09-15新規作成）。他の `GSM_*`/`ECM_*` 系と異なり**描画は行わず**、TCCが既に作成済みのGIF画像をそのまま取得する（格子点数値データではない）。ダウンロード後は他のレポート系スクリプトと同様に `reports/tcc_{yyyymm}/` へMarkdownレポート（画像埋め込み）を自動生成し、`--push` でGitHubに公開できる。
 
 **背景**: 気象庁の3か月予報解説資料で使われる基本場図（500hPa高度・850hPa気温・海面水温・速度ポテンシャル・流線関数・降水量平年比の平年偏差）は、TCCサイト上でJavaScriptにより動的に画像URLが組み立てられており直接のダウンロードリンクが存在しない。各ページのJS（`changeImage.js` 等）を解析してURL規則を特定し、Pythonから直接組み立ててダウンロードする。
 
 ```bash
-python JMA_TCC_3MonMean.py [--yyyymm YYYYMM [YYYYMM ...]] [--elements ELEM [ELEM ...]] [--norm] [--output-dir DIR]
+python JMA_TCC_3MonMean.py [--yyyymm YYYYMM [YYYYMM ...]] [--elements ELEM [ELEM ...]] [--norm] [--output-dir DIR] [--push] [--no-report]
 ```
 
 | 引数 | 形式 | デフォルト | 説明 |
 |---|---|---|---|
-| `--yyyymm` | YYYYMM（複数可） | 自動検索（最新月） | 3か月平均の**中央月**。例: `202603` = 2026年1〜3月平均 |
+| `--yyyymm` | YYYYMM（複数可） | 自動検索（最新月） | 基準年月。**意味は要素グループで異なる**（下記「重要」参照） |
 | `--elements` | 要素コード（複数可） | 全9要素 | 下表参照 |
 | `--norm` | フラグ | 実況値+平年偏差(`hist`) | 平年値(`norm`)を取得。sst/ssta/gprtには無効（常に無視） |
 | `--output-dir` | パス | `./data/tcc` | 保存先。`{output-dir}/{YYYYMM}/` に要素別GIFを格納 |
+| `--push` | フラグ | pushしない | 生成したレポート（`reports/tcc_{yyyymm}/`）をGitHubへ push |
+| `--no-report` | フラグ | レポート生成する | Markdownレポートを生成しない（`data/tcc/`へのDLのみ） |
+
+**重要: `--yyyymm` の意味は要素グループで異なる**（TCCサイト側の仕様。実画像キャプションで実測確認済み）
+
+| 要素グループ | `--yyyymm`の意味 | 例 |
+|---|---|---|
+| `z500`/`t850`/`psi850`/`psi200`/`chi850`/`chi200`（気候システム監視系） | **終了月** | `202603` → 実際は2026年**1〜3月**平均 |
+| `sst`/`ssta`/`gprt`（海面水温・降水量平年比） | **中央月** | `202607` → 実際は2026年**6〜8月**平均 |
+
+このズレに気づかず両方を「中央月」として扱っていたバグが初期実装にあったが、TCC実画像のキャプションと突き合わせて検証し修正済み（2026-09-15）。生成されるMarkdownレポートには要素ごとに実際の3か月期間が明記される。
 
 **対応要素**
 
-| コード | 内容 | データソース | 提供期間 |
-|---|---|---|---|
-| `z500` | 500hPa高度・平年偏差（北半球） | 気候システム監視 | 1947年9月〜 |
-| `t850` | 850hPa気温・平年偏差（北半球） | 気候システム監視 | 1947年9月〜 |
-| `psi850`/`psi200` | 850/200hPa流線関数・平年偏差（熱帯） | 気候システム監視 | 1947年9月〜 |
-| `chi850`/`chi200` | 850/200hPa速度ポテンシャル・発散風（熱帯） | 気候システム監視 | 1947年9月〜 |
-| `sst`/`ssta` | 海面水温（実況値・平年偏差、全球） | El Niño Monitoring | 1970年2月〜 |
-| `gprt` | 降水量平年比（%、地上観測点シンボル図） | World Climate 季節図 | 直近8シーズン程度のみ |
+| コード | 内容 | データソース | `--yyyymm`の意味 | 提供期間 |
+|---|---|---|---|---|
+| `z500` | 500hPa高度・平年偏差（北半球） | 気候システム監視 | 終了月 | 1947年9月〜 |
+| `t850` | 850hPa気温・平年偏差（北半球） | 気候システム監視 | 終了月 | 1947年9月〜 |
+| `psi850`/`psi200` | 850/200hPa流線関数・平年偏差（熱帯） | 気候システム監視 | 終了月 | 1947年9月〜 |
+| `chi850`/`chi200` | 850/200hPa速度ポテンシャル・発散風（熱帯） | 気候システム監視 | 終了月 | 1947年9月〜 |
+| `sst`/`ssta` | 海面水温（実況値・平年偏差、全球） | El Niño Monitoring | 中央月 | 1970年2月〜 |
+| `gprt` | 降水量平年比（%、地上観測点シンボル図） | World Climate 季節図 | 中央月 | 直近8シーズン程度のみ |
 
 ```bash
 python JMA_TCC_3MonMean.py                                        # 最新月を自動検索し全9要素DL
-python JMA_TCC_3MonMean.py --yyyymm 202603                        # 2026年1〜3月平均を指定
+python JMA_TCC_3MonMean.py --yyyymm 202603                        # z500等は終了月扱い→2026年1〜3月平均
 python JMA_TCC_3MonMean.py --yyyymm 202603 202606                 # 複数年月まとめて指定
 python JMA_TCC_3MonMean.py --yyyymm 202603 --elements z500 t850   # 要素を絞り込み
-python JMA_TCC_3MonMean.py --yyyymm 202607 --elements sst ssta    # 海面水温のみ
-python JMA_TCC_3MonMean.py --yyyymm 202604 --elements gprt        # 降水量平年比（3〜5月平均）
+python JMA_TCC_3MonMean.py --yyyymm 202607 --elements sst ssta    # sstは中央月扱い→6〜8月平均
+python JMA_TCC_3MonMean.py --yyyymm 202604 --elements gprt        # gprtも中央月扱い→3〜5月平均
+python JMA_TCC_3MonMean.py --yyyymm 202603 --push                 # レポート生成しGitHub push
 ```
 
 - **URLパターン（気候システム監視系）**: `https://www.data.jma.go.jp/cpd/db/diag/{yyyy}/{extr|trop}/{psnh|lalogl}/3mon/{hist|norm}/{elem}/{...}.gif`（`www.data.jma.go.jp/gmd/...` は `/cpd/...` へ301リダイレクトされるため直接指定）
@@ -1227,7 +1239,8 @@ python JMA_TCC_3MonMean.py --yyyymm 202604 --elements gprt        # 降水量平
 - **自動フォールバック**: 要素によってデータ確定タイミングが異なり（海面水温は1か月遅れて確定するなど）自動検索した最新月では404になることがあるため、404時は1か月前へ1回だけ自動リトライする
 - **gprtの制約**: 気象庁の季節区分（3-5/6-8/9-11/12-2月）単位でのみ存在するため、中央月は`1,4,7,10`月のいずれかを指定する必要がある（それ以外はエラーメッセージ付きでスキップ、404を無言で失敗させない）
 - **未対応**: 格子点数値データ（GRIB/NetCDF）としての提供はTCCにないため、数値解析用途にはNCEP/JRA-55等の再解析データ（`make_ncep_climo.py` 等）を使う必要がある
-- 出力: `data/tcc/{YYYYMM}/{要素固有のファイル名}.gif`（既存ファイルは自動スキップ）
+- 出力（ダウンロード）: `data/tcc/{YYYYMM}/{要素固有のファイル名}.gif`（既存ファイルは自動スキップ、Git除外）
+- 出力（レポート）: `reports/tcc_{YYYYMM}/tcc_3monmean_report.md` + 画像（`--push`でGitHub公開、他のレポート系スクリプトと同じ運用）
 
 ---
 
