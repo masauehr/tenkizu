@@ -61,6 +61,7 @@ GSM（全球モデル）・ECMWF・GFS・AIFS の GRIB2 データをダウンロ
 | `emagram.py` | **エマグラム・温位エマグラム描画**。Wyoming高層ゾンデデータを取得し、エマグラム（CAPE/CIN・ホドグラフ付き）と温位エマグラム（θ/θe/θes/θw）をPNG出力。`--report` でMarkdownレポート生成、`--push` でGitHub push |
 | `GRIB2_Emagram.py` | GSM/ECMWFのGRIB2から任意緯度・経度の格子点エマグラム・温位エマグラムを作図。`--start-ft`/`--steps`/`--interval` で複数FTを連続作図。`--push` でGitHub push |
 | `JRA55_Emagram.py` | JRA-55 NetCDFから任意緯度・経度の格子点エマグラム・温位エマグラムを作図。`--push` でGitHub push |
+| `msm_wind_fetch.py` / `msm_wind_fetch.ipynb` | **MSM 地上風（10m）の指定地点時系列をCSV化**。京大生存圏研究所の日別NetCDF（MSM-S）から最寄り格子の u/v を抽出し、風速・風向・解析値フラグ付きCSVを出力。`.py` はコマンドライン、`.ipynb` は単体で動くノートブック版（2026-10-03） |
 | `make_pptx.py` | PNG → PowerPoint 自動生成（主要7グループ） |
 | `make_pptx2.py` | PNG → PowerPoint 自動生成（残り3グループ） |
 | `samples/` | 全種別サンプルPNG 14枚 + PowerPoint 1ファイル（GitHub閲覧用） |
@@ -76,6 +77,7 @@ GSM（全球モデル）・ECMWF・GFS・AIFS の GRIB2 データをダウンロ
 | `data/aifs-ens/` | AIFS-ENS cf データ（Git 除外）。URL: `aifs-ens/0p25/enfo/`、全初期時刻・~85MB/FT |
 | `data/jmara/` | 解析雨量GRIB2データ（Git 除外）。ファイル名: `Z__C_RJTD_{YYYYMMDDHHMM}00_SRF_GPV_Ggis1km_Prr60lv_ANAL_grib2.bin`。自動DL未対応・手動配置 |
 | `data/tcc/` | TCC3か月平均天候図GIF格納ディレクトリ（Git 除外）。`{YYYYMM}/` サブディレクトリごとに要素別GIFを保存 |
+| `data/msm_wind_*.csv` | MSM地上風の取得結果CSV（Git 除外）。`msm_wind_{開始日}_{終了日}.csv`。日別NetCDF（`MMDD.nc`、約140MB）は抽出後に自動削除（`--keep` で保存） |
 | `output/` | PNG 出力先（Git 除外） |
 
 ---
@@ -1241,6 +1243,91 @@ python JMA_TCC_3MonMean.py --yyyymm 202603 --push                 # レポート
 - **未対応**: 格子点数値データ（GRIB/NetCDF）としての提供はTCCにないため、数値解析用途にはNCEP/JRA-55等の再解析データ（`make_ncep_climo.py` 等）を使う必要がある
 - 出力（ダウンロード）: `data/tcc/{YYYYMM}/{要素固有のファイル名}.gif`（既存ファイルは自動スキップ、Git除外）
 - 出力（レポート）: `reports/tcc_{YYYYMM}/tcc_3monmean_report.md` + 画像（`--push`でGitHub公開、他のレポート系スクリプトと同じ運用）
+
+---
+
+## MSM 地上風 時系列取得スクリプト（msm_wind_fetch.py / msm_wind_fetch.ipynb）
+
+指定した地点（緯度・経度）の最寄り格子について、気象庁メソモデル（MSM）の**地上風（10m）の時系列**を取得して CSV にする。数日〜1年分の風況を、格子点データ全体をダウンロードせずに地点だけ取り出す用途。
+
+| ファイル | 内容 |
+|---|---|
+| `msm_wind_fetch.py` | コマンドライン版。単体で動作（他スクリプト・設定ファイルへの依存なし） |
+| `msm_wind_fetch.ipynb` | ノートブック版。**関数を埋め込み済みで単体動作**（`.py` 不要）。取得→CSV保存→確認プロット（風速・風向、解析値を赤丸で表示）まで実行 |
+
+> `.py` と `.ipynb` には同じ関数が入っている。**修正するときは両方を直すこと。**
+
+### データ源
+
+京都大学生存圏研究所の気象庁データアーカイブ（**研究・教育目的での利用に限る**）。
+
+```
+http://database.rish.kyoto-u.ac.jp/arch/jmadata/data/gpv/netcdf/MSM-S/{YYYY}/{MMDD}.nc
+```
+
+- 1ファイル = 1日（UTC）分、**約140MB**。前日分は毎日 01:00 GMT（10:00 JST）頃に公開される。
+- 範囲: 北緯22.4〜47.6度・東経120〜150度（505×481格子、約5km）。
+- 変数: `u`・`v`（地上風 m/s）のほか、気温・相対湿度・海面気圧・1時間降水量・雲量・下向き短波放射。
+- **`https://` は証明書エラーになる**ため `http://` を使う（既存の tenkizu スクリプトも同じ）。
+
+### 時刻の意味（重要）
+
+時刻は1時間ごと24点/日。**00, 03, 06, …, 21UTC の8時点が初期値（FH00＝解析値）**で、それ以外の16時点は直前の初期値からの1〜2時間予報。CSV の `is_analysis` 列で区別する（`True`＝解析値）。1時間ごとの全点を解析値として扱ってはいけない。解析値だけが必要なら `--analysis-only`。
+
+### 実行方法（コマンドライン版）
+
+```bash
+python msm_wind_fetch.py                         # 直近5日（UTCで昨日まで）、既定地点
+python msm_wind_fetch.py --start 2026-09-28 --end 2026-10-02 --lat 26.1708 --lon 127.7418
+python msm_wind_fetch.py --days 10 --end 2026-10-02
+python msm_wind_fetch.py --analysis-only         # 3時間ごとの解析値のみ
+python msm_wind_fetch.py --keep                  # ダウンロードしたNetCDFを data/ に残す
+```
+
+| 引数 | 形式 | デフォルト | 説明 |
+|---|---|---|---|
+| `--start` | YYYY-MM-DD（UTC） | `--end` から `--days` 日前 | 開始日 |
+| `--end` | YYYY-MM-DD（UTC） | UTCの昨日 | 終了日（両端含む） |
+| `--days` | 整数 | 5 | `--start` 省略時の日数 |
+| `--lat` / `--lon` | 度 | 26.1708 / 127.7418（沖縄本島南部、nouken の対象地点） | 取得地点。最寄り格子を使う |
+| `--analysis-only` | フラグ | 全時刻 | 解析値（FH00）の行だけ出力 |
+| `--keep` | フラグ | 抽出後に削除 | ダウンロードしたNetCDFを `data/` に残す |
+| `--out` | パス | `data/msm_wind_{開始日}_{終了日}.csv` | 出力CSV |
+
+- 動作: 1日ずつダウンロード → 最寄り格子の u/v を抽出 → NetCDF削除。ダウンロード間隔は3秒（サーバー負荷配慮）。`data/MMDD.nc` が既にあればそれを使う。
+- 未公開の日（404）は警告を出してスキップする。1日も取れなければ終了コード1。
+- 出力先 `data/` は、`.py` の置き場所の隣に作られる。
+
+### 出力CSV
+
+| 列 | 内容 |
+|---|---|
+| `time_utc` / `time_jst` | 時刻（UTC / JST＝UTC+9） |
+| `u` / `v` | 東西・南北風成分（m/s、東・北向きが正） |
+| `wspd` | 風速（m/s）＝√(u²+v²) |
+| `wdir` | 風向（度、**風が吹いてくる方位**。北=0・東=90） |
+| `is_analysis` | 解析値（FH00）なら `True` |
+
+### ノートブック版の使い方
+
+1. 先頭セルの markdown に必要ライブラリの一覧あり。未導入なら `pip install numpy pandas xarray netCDF4 requests matplotlib`。
+2. 「パラメータ」セルで `LAT, LON`・`START_DATE`・`END_DATE`・`DAYS`・`KEEP` を設定する。期間は `'YYYY-MM-DD'`（UTC）で指定し（例: `START_DATE = '2026-09-28'`, `END_DATE = '2026-10-02'`）、`None` のままなら昨日までの `DAYS`（既定5）日間。既定地点は沖縄本島南部。
+3. 上から順に実行 → `data/`（ノートブックの作業フォルダ直下）にCSVが作られ、確認プロットが表示される。
+
+- **必要ライブラリ**（動作確認済み）: numpy 2.0.1 / pandas 2.3.1 / xarray 2025.7.1 / **netCDF4 1.7.2**（無いとNetCDFを読めない）/ requests 2.32.4 / matplotlib 3.10.0。Python 3.9 以上。
+- **日本語フォント**: 先頭セルで `Hiragino Sans`（macOS）を指定。**未指定だと凡例・軸ラベルが豆腐（□）になる**（既定の DejaVu Sans に日本語がないため）。Windows/Linux ではフォント名を変更する。
+
+### 動作確認（2026-10-03）
+
+- 沖縄本島南部（N26.1708, E127.7418 → 最寄り格子 N26.15, E127.75）で 2026-09-28〜10-02 の5日分を取得。120行・1時間間隔で連続・欠測0、うち解析値40行。日別の風速は 1.1〜6.1 m/s、風向は北東寄り。
+- 5日分で約700MB（約140MB×5）をダウンロード。手元の `1002.nc` を使った1日分の結果と、スクリプト版・ノートブック版のCSVが一致することを確認。
+
+### 注意点・調査メモ
+
+- 最寄り格子は地点から数km（今回は緯度で約0.02度）ずれる。風況の地点代表性は地形次第。
+- NetCDF版の MSM-S は **解析値＋1〜2時間予報**。**気象庁の「三十分大気解析GPV」（30分ごと・2km）は、京大の配信にも DIAS（気象庁提供のGPVアーカイブ）にも収録されていない**（2026-10-03時点の調査）。入手経路は気象業務支援センターの有料配信のみとみられる。
+- 気圧面の風（MSM-P）は別のファイル（`MSM-P/{YYYY}/{MMDD}.nc`、約190MB/日）。本スクリプトは地上風のみ。
+- 1年分は約50GB（365日×約140MB）をダウンロードすることになる。実行前に必要性と所要時間を確認すること。
 
 ---
 
